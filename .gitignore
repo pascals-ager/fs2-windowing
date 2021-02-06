@@ -20,9 +20,6 @@ dist/
 target/
 dist/
 
-# JetBrains IDE
-.idea/
-
 # Unit test reports
 TEST*.xml
 
@@ -48,3 +45,6 @@ Thumbs.db
 # SBT related
 .bsp/
 .bloop/
+.metals/
+.vscode/
+.idea/
