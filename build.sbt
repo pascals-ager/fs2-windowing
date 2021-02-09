@@ -36,7 +36,7 @@ lazy val authorizerNubank = (project in file(".")).
   settings(mainClass in Compile := Some("io.nubank.challenge.authorizer.Authorizer")).
   settings(commonSettings: _*).
   settings(
-    libraryDependencies ++= fs2 ++ cache
+    libraryDependencies ++= fs2 ++ cache ++ circe ++ scalatest
   )
 
 scalafmtOnCompile := true
