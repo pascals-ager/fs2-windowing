@@ -7,6 +7,7 @@ object Dependencies {
     val cache = "0.28.0"
     val circeVersion = "0.13.0"
     val scalatest = "3.1.1"
+    val log4cats = "1.2.0-RC2"
   }
 
   lazy val fs2 = Seq(
@@ -25,6 +26,12 @@ object Dependencies {
 
   lazy val scalatest = Seq(
     "org.scalatest" %% "scalatest" % Versions.scalatest % Test
+  )
+
+  lazy val log4cats = Seq(
+    "ch.qos.logback" % "logback-classic" % "1.2.3",
+    "net.logstash.logback" % "logstash-logback-encoder" % "6.3",
+    "org.typelevel" %% "log4cats-slf4j" % Versions.log4cats
   )
 
 }

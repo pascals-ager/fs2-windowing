@@ -3,6 +3,7 @@ package io.nubank.challenge.authorizer.window
 import cats.effect.IO
 import cats.effect.concurrent.Ref
 import io.nubank.challenge.authorizer.external.ExternalDomain.Transaction
+import org.typelevel.log4cats.Logger
 import scalacache.{Entry, Mode}
 import scalacache.guava.GuavaCache
 
@@ -11,7 +12,11 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.ConcurrentMapHasAsScala
 
-class TransactionWindow(window: Ref[IO, GuavaCache[ListBuffer[(Long, Long)]]])(implicit mode: Mode[IO], clock: Clock) {
+class TransactionWindow(window: Ref[IO, GuavaCache[ListBuffer[(Long, Long)]]])(
+    implicit mode: Mode[IO],
+    clock: Clock,
+    logger: Logger[IO]
+) {
 
   def put(transaction: Transaction): IO[Unit] =
     for {
@@ -52,7 +57,9 @@ class TransactionWindow(window: Ref[IO, GuavaCache[ListBuffer[(Long, Long)]]])(i
   def evictExpiredTimestamps(timestampEvictionInterval: FiniteDuration): IO[Unit] =
     for {
       curr <- IO.delay(System.currentTimeMillis())
-      _    <- IO.delay(println(s"Running evictExpiredTimestamps at ${curr}"))
+      _ <- logger.info(
+        s"Evicting expired timestamps at ${curr} with evictionInterval ${timestampEvictionInterval.toMillis} ms"
+      )
       mod <- window.update(win => {
         for ((key, entry) <- win.underlying.asMap().asScala) {
           entry.value.filterInPlace(item => (curr - item._2) <= timestampEvictionInterval.toMillis)
