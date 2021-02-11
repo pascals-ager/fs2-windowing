@@ -10,7 +10,7 @@ import scalacache.guava.GuavaCache
 import java.time.Clock
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
-import scala.jdk.CollectionConverters.ConcurrentMapHasAsScala
+import scala.jdk.CollectionConverters.{ConcurrentMapHasAsScala, IterableHasAsScala}
 
 class TransactionWindow(window: Ref[IO, GuavaCache[ListBuffer[(Long, Long)]]])(
     implicit mode: Mode[IO],
@@ -35,11 +35,15 @@ class TransactionWindow(window: Ref[IO, GuavaCache[ListBuffer[(Long, Long)]]])(
       )
     } yield mod
 
-  def getSize: IO[Long] =
+  def getSize: IO[Int] =
     for {
       win <- window.get
       size <- IO.delay {
-        win.underlying.size()
+        var size = 0
+        for (entries <- win.underlying.asMap().values().asScala) {
+          size += entries.value.size
+        }
+        size
       }
     } yield size
 
