@@ -1,40 +1,41 @@
 package io.nubank.challenge.authorizer.window
 
 import io.nubank.challenge.authorizer.external.ExternalDomain.Transaction
+import monix.eval.Task
+import monix.execution.Scheduler
+import org.typelevel.log4cats.Logger
 
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.CollectionHasAsScala
-import scala.util.Try
 
-class ConcurrentWindow(windowSize: FiniteDuration) {
-  type MerchantAmountKey = String
-  type TransactionTime   = Long
-  type ProcessingTime    = Long
-  var windowMap = new ConcurrentHashMap[MerchantAmountKey, mutable.ListBuffer[(TransactionTime, ProcessingTime)]]()
+class ConcurrentWindow(windowSize: FiniteDuration)(implicit logger: Logger[Task]) {
+  var windowMap = new ConcurrentHashMap[String, mutable.ListBuffer[(Long, Long)]]()
 
-  def clearWindow(): Try[Unit] = Try(windowMap.clear())
+  def clearWindow(): Task[Unit] = Task.eval(windowMap.clear())
 
-  def getWindow(merchant: String, amount: Int): Try[mutable.Seq[(TransactionTime, ProcessingTime)]] = {
-    Try(windowMap.get(merchant + amount.toString))
+  def getWindow(merchant: String, amount: Int): Task[mutable.Seq[(Long, Long)]] = {
+    Task.eval(windowMap.get(merchant + amount.toString))
   }
 
-  def putWindow(transaction: Transaction): Try[ListBuffer[(TransactionTime, ProcessingTime)]] =
-    Try(if (windowMap.containsKey(transaction.merchant + transaction.amount.toString)) {
-      var transactionTimeEntries: mutable.ListBuffer[(TransactionTime, ProcessingTime)] =
-        windowMap.get(transaction.merchant + transaction.amount.toString)
-      transactionTimeEntries += Tuple2(transaction.transactionTime, transaction.processingTime)
-      windowMap.replace(transaction.merchant + transaction.amount.toString, transactionTimeEntries)
-    } else {
-      windowMap.put(
-        transaction.merchant + transaction.amount.toString,
-        mutable.ListBuffer((transaction.transactionTime, transaction.processingTime))
-      )
-    })
+  def putWindow(transaction: Transaction): Task[ListBuffer[(Long, Long)]] =
+    Task.eval {
+      if (windowMap.containsKey(transaction.merchant + transaction.amount.toString)) {
+        var transactionTimeEntries: mutable.ListBuffer[(Long, Long)] =
+          windowMap.get(transaction.merchant + transaction.amount.toString)
+        transactionTimeEntries += Tuple2(transaction.transactionTime, transaction.processingTime)
+        windowMap.replace(transaction.merchant + transaction.amount.toString, transactionTimeEntries)
+      } else {
+        windowMap.put(
+          transaction.merchant + transaction.amount.toString,
+          mutable.ListBuffer((transaction.transactionTime, transaction.processingTime))
+        )
+      }
+    }
 
-  def getWindowSize: Try[Int] = Try {
+  def getWindowSize: Task[Int] = Task.eval {
     var size = 0
     for (transactionTimeEntries <- windowMap.values().asScala) {
       size += transactionTimeEntries.size
@@ -42,16 +43,17 @@ class ConcurrentWindow(windowSize: FiniteDuration) {
     size
   }
 
-  def evictionFunction: Runnable = new Runnable {
+  def evictionFunction(implicit scheduler: Scheduler): Runnable = new Runnable {
     override def run(): Unit = {
       try {
+        logger.info(s"Running cache eviction").runToFuture
         for (entries <- windowMap.entrySet().asScala) {
-          val entryKey: MerchantAmountKey                             = entries.getKey
-          var entryVal: ListBuffer[(TransactionTime, ProcessingTime)] = entries.getValue
-          val curr: TransactionTime                                   = System.currentTimeMillis()
+          val entryKey: String                   = entries.getKey
+          val entryVal: ListBuffer[(Long, Long)] = entries.getValue
+          val curr: Long                         = System.currentTimeMillis()
 
           if (curr - entryVal.reverse.head._2 >= windowSize.toMillis) {
-            println(s"removing expired key ${entryKey}")
+            logger.info(s"Removing expired cache key ${entryKey}").runToFuture
             windowMap.remove(entryKey)
           } else {
             entryVal.filterInPlace(item => (curr - item._2) <= windowSize.toMillis)
@@ -59,7 +61,8 @@ class ConcurrentWindow(windowSize: FiniteDuration) {
 
         }
       } catch {
-        case ex: Exception => println(s"Let's catch all errors, can't throw!- ${ex}")
+        case ex: Exception =>
+          logger.error(s"Let's catch all errors, can't throw during eviction!- ${ex}")
       }
     }
   }
