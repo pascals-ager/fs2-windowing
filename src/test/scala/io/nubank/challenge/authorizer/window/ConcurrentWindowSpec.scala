@@ -1,12 +1,10 @@
 package io.nubank.challenge.authorizer.window
 
-import cats.effect.{ContextShift, IO, Timer}
-import cats.effect.implicits._
+import cats.effect.IO
 import io.nubank.challenge.authorizer.external.ExternalDomain.Transaction
 import io.nubank.challenge.authorizer.window.ConcurrentWindow.acquireWindow
 
 import scala.concurrent.duration._
-import scala.concurrent.ExecutionContext
 import org.scalatest.funspec.AnyFunSpec
 import org.typelevel.log4cats.SelfAwareStructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -14,8 +12,6 @@ import scala.collection.mutable
 
 class ConcurrentWindowSpec extends AnyFunSpec {
   implicit def logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
-  /*  implicit val timer: Timer[IO]                      = IO.timer(ExecutionContext.global)
-  implicit val cs: ContextShift[IO]                  = IO.contextShift(ExecutionContext.global)*/
 
   it("Write and read two entries") {
     val test: IO[Vector[(Long, Long)]] = acquireWindow(2.minutes).use { window =>
