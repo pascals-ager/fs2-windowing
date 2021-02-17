@@ -22,7 +22,9 @@ object Dependencies {
   )
 
   lazy val circe = Seq(
-    "io.circe" %% "circe-parser" % Versions.circeVersion
+    "io.circe" %% "circe-parser" % Versions.circeVersion,
+    "io.circe" %% "circe-generic" % Versions.circeVersion,
+    "io.circe" %% "circe-generic-extras" % Versions.circeVersion
   )
 
   lazy val scalatest = Seq(
@@ -36,7 +38,7 @@ object Dependencies {
   )
 
   lazy val monix = Seq (
-    "io.monix" %% "monix" % Versions.monix
+    "io.monix" %% "monix-execution" % Versions.monix
   )
 
 }
