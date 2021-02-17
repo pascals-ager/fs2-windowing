@@ -13,7 +13,8 @@ import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 class ConcurrentWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO]) {
-  val windowMap = new ConcurrentHashMap[String, mutable.ListBuffer[(Long, Long)]]()
+  val windowMap                  = new ConcurrentHashMap[String, mutable.ListBuffer[(Long, Long)]]()
+  lazy val widowSizeMs: IO[Long] = IO.pure(windowSize.toMillis)
 
   def clearWindow(): IO[Unit] = IO.delay(windowMap.clear())
 

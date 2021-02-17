@@ -13,10 +13,12 @@ object ValidationService {
     for {
       valid <- oldAccount match {
         case None =>
-          if (newAccount.`active-card` && newAccount.`available-limit` >= 0) IO.pure(newAccount.validNec)
+          if (newAccount.`available-limit` >= 0) IO.pure(newAccount.validNec)
           else IO.pure(AccountNotInit.invalidNec)
         case Some(acc) =>
-          if (acc.`active-card` && !(acc.`active-card`)) IO.pure(newAccount.validNec)
+          if ((acc.`active-card` && !(newAccount.`active-card`) && (acc.`available-limit` == newAccount.`available-limit`)) ||
+              (!(acc.`active-card`) && newAccount.`active-card` && (acc.`available-limit` == newAccount.`available-limit`)))
+            IO.pure(newAccount.validNec)
           else IO.pure(AccountAlreadyInit.invalidNec)
       }
     } yield valid
@@ -58,7 +60,7 @@ object ValidationService {
   )(implicit window: ConcurrentWindow): IO[ValidatedNec[DomainValidation, Transaction]] =
     for {
       transactionCount <- window.getWindowSize
-      valid <- if (transactionCount <= 3) {
+      valid <- if (transactionCount < 3) {
         IO.pure(transaction.validNec)
       } else {
         IO.pure(HighFreqTransaction.invalidNec)
@@ -69,10 +71,13 @@ object ValidationService {
       transaction: Transaction
   )(implicit window: ConcurrentWindow): IO[ValidatedNec[DomainValidation, Transaction]] =
     for {
-      transactionCount <- window.getWindow(transaction.merchant, transaction.amount)
-      valid <- transactionCount match {
+      prevTransaction <- window.getWindow(transaction.merchant, transaction.amount)
+      valid <- prevTransaction match {
         case Some(entry) =>
-          if (transactionCount.size <= 2) {
+          /* This is pretty naive. In this scenario, this works.
+           * Here the eviction interval is 2 mins and tolerance is 1 transaction per 2 mins
+           * */
+          if (entry.isEmpty) {
             IO.pure(transaction.validNec)
           } else {
             IO.pure(DoubledTransaction.invalidNec)

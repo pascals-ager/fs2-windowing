@@ -10,6 +10,8 @@ import org.typelevel.log4cats.SelfAwareStructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scala.collection.mutable
 
+/* Unable to use the TestScheduler to simulate time ticks because the eviction is strictly
+* schedule based. Ticking time does not tick it on the window eviction fiber */
 class ConcurrentWindowSpec extends AnyFunSpec {
   implicit def logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
