@@ -5,7 +5,7 @@ import io.nubank.challenge.authorizer.external.ExternalDomain
 import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, Transaction}
 import io.nubank.challenge.authorizer.stores.AccountStoreService
 import io.nubank.challenge.authorizer.validations.ValidationService._
-import io.nubank.challenge.authorizer.window.ConcurrentWindow.acquireWindow
+import io.nubank.challenge.authorizer.window.TransactionWindow.acquireWindow
 import org.scalatest.funspec.AnyFunSpec
 import org.typelevel.log4cats.SelfAwareStructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
@@ -95,7 +95,7 @@ class ValidationServiceSpec extends AnyFunSpec {
           acctStateOne   <- validateAndPut(beforeTransactionAccount)(store)
           acctStateTwo   <- validateAndPut(transactionOne)(store, window._1)
           acct           <- store.getAccount()
-          entry          <- window._1.getWindow("Nike", 240)
+          entry          <- window._1.getTransactionEntry("Nike", 240)
         } yield (acctStateOne, acctStateTwo, acct, entry)
 
       }
@@ -131,7 +131,7 @@ class ValidationServiceSpec extends AnyFunSpec {
           acctStateOne   <- validateAndPut(beforeTransactionAccount)(store)
           acctStateTwo   <- validateAndPut(transactionOne)(store, window._1)
           acct           <- store.getAccount()
-          entry          <- window._1.getWindow("Nike", 240)
+          entry          <- window._1.getTransactionEntry("Nike", 240)
         } yield (acctStateOne, acctStateTwo, acct, entry)
 
       }
@@ -167,7 +167,7 @@ class ValidationServiceSpec extends AnyFunSpec {
           acctStateOne   <- validateAndPut(beforeTransactionAccount)(store)
           acctStateTwo   <- validateAndPut(transactionOne)(store, window._1)
           acct           <- store.getAccount()
-          entry          <- window._1.getWindow("Nike", 240)
+          entry          <- window._1.getTransactionEntry("Nike", 240)
         } yield (acctStateOne, acctStateTwo, acct, entry)
 
       }
@@ -227,10 +227,10 @@ class ValidationServiceSpec extends AnyFunSpec {
           _                <- logger.info(s"Using ${tsFour} for fourth transaction")
           transactionFour  <- IO.pure(Transaction("Apple", 10, 1581256236, tsFour))
           acctStateFive    <- validateAndPut(transactionFour)(store, window._1)
-          entryOne         <- window._1.getWindow("Nike", 250)
-          entryTwo         <- window._1.getWindow("Adidas", 250)
-          entryThree       <- window._1.getWindow("Apple", 500)
-          entryFour        <- window._1.getWindow("Apple", 10)
+          entryOne         <- window._1.getTransactionEntry("Nike", 250)
+          entryTwo         <- window._1.getTransactionEntry("Adidas", 250)
+          entryThree       <- window._1.getTransactionEntry("Apple", 500)
+          entryFour        <- window._1.getTransactionEntry("Apple", 10)
         } yield (
           acctStateOne,
           acctStateTwo,
@@ -303,7 +303,7 @@ class ValidationServiceSpec extends AnyFunSpec {
           transactionTwo <- IO.pure(Transaction("Apple", 1000, 1581256244, tsTwo))
           acctStateThree <- validateAndPut(transactionTwo)(store, window._1)
 
-          entryOne <- window._1.getWindow("Apple", 1000)
+          entryOne <- window._1.getTransactionEntry("Apple", 1000)
 
         } yield (
           acctStateOne,

@@ -8,9 +8,18 @@ import scala.collection.mutable
 import scala.util.Try
 
 trait AccountStoreService {
+
+  /**
+    * @return An Option[Account]: Option indication the Account may or may not exist
+    */
   /* This signature ideally should have an account-uuid, but since we are dealing with a single account, this is
    * sufficient */
   def getAccount(): IO[Option[Account]]
+
+  /**
+    * @param account: The Account that must be inserted in to the store
+    * @return The new state for the account
+    */
   def putAccount(account: Account): IO[Option[Account]]
 
 }

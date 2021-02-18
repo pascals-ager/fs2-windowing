@@ -5,12 +5,15 @@ import cats.effect.IO
 import cats.implicits._
 import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, AccountState, Transaction}
 import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.window.ConcurrentWindow
+import io.nubank.challenge.authorizer.window.TransactionWindow
 
 object ValidationService {
 
-  def validateAccount(newAccount: Account, oldAccount: Option[Account]): IO[ValidatedNec[DomainValidation, Account]] =
+  def validateAccount(
+      newAccount: Account
+  )(implicit store: AccountStoreService): IO[ValidatedNec[DomainValidation, Account]] =
     for {
+      oldAccount <- store.getAccount()
       valid <- oldAccount match {
         case None =>
           if (newAccount.`available-limit` >= 0) IO.pure(newAccount.validNec)
@@ -57,7 +60,7 @@ object ValidationService {
 
   def validatedTransactionFrequency(
       transaction: Transaction
-  )(implicit window: ConcurrentWindow): IO[ValidatedNec[DomainValidation, Transaction]] =
+  )(implicit window: TransactionWindow): IO[ValidatedNec[DomainValidation, Transaction]] =
     for {
       transactionCount <- window.getWindowSize
       valid <- if (transactionCount < 3) {
@@ -69,9 +72,9 @@ object ValidationService {
 
   def validatedDoubledTransaction(
       transaction: Transaction
-  )(implicit window: ConcurrentWindow): IO[ValidatedNec[DomainValidation, Transaction]] =
+  )(implicit window: TransactionWindow): IO[ValidatedNec[DomainValidation, Transaction]] =
     for {
-      prevTransaction <- window.getWindow(transaction.merchant, transaction.amount)
+      prevTransaction <- window.getTransactionEntry(transaction.merchant, transaction.amount)
       valid <- prevTransaction match {
         case Some(entry) =>
           /* This is pretty naive. In this scenario, this works.
@@ -88,8 +91,7 @@ object ValidationService {
 
   def validateAndPut(account: Account)(implicit store: AccountStoreService): IO[AccountState] = {
     for {
-      oldAcc <- store.getAccount()
-      valid  <- validateAccount(account, oldAcc)
+      valid <- validateAccount(account)(store)
       accState <- valid.toEither match {
         case Right(value) => store.putAccount(value).map(old => AccountState(Some(value), List()))
         case Left(ex)     => IO.pure(ex.toChain.toList).map(errs => AccountState(None, errs))
@@ -99,7 +101,7 @@ object ValidationService {
 
   def validateAndPut(
       transaction: Transaction
-  )(implicit store: AccountStoreService, window: ConcurrentWindow): IO[AccountState] =
+  )(implicit store: AccountStoreService, window: TransactionWindow): IO[AccountState] =
     for {
       transactionAccount       <- store.getAccount()
       acctActiveValidation     <- validatedAccountActive(transaction, transactionAccount)
@@ -116,7 +118,7 @@ object ValidationService {
           .putAccount(
             Account(transactionAccount.get.`active-card`, transactionAccount.get.`available-limit` - transaction.amount)
           )
-          .flatMap { newAcc => window.putWindow(transaction).map(io => AccountState(newAcc, allErrors.toList)) }
+          .flatMap { newAcc => window.putTransaction(transaction).map(io => AccountState(newAcc, allErrors.toList)) }
       } else {
         IO.delay(AccountState(transactionAccount, allErrors.toList))
       }

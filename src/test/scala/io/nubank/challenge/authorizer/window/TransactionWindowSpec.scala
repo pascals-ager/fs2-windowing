@@ -2,7 +2,7 @@ package io.nubank.challenge.authorizer.window
 
 import cats.effect.IO
 import io.nubank.challenge.authorizer.external.ExternalDomain.Transaction
-import io.nubank.challenge.authorizer.window.ConcurrentWindow.acquireWindow
+import io.nubank.challenge.authorizer.window.TransactionWindow.acquireWindow
 
 import scala.concurrent.duration._
 import org.scalatest.funspec.AnyFunSpec
@@ -11,8 +11,8 @@ import org.typelevel.log4cats.slf4j.Slf4jLogger
 import scala.collection.mutable
 
 /* Unable to use the TestScheduler to simulate time ticks because the eviction is strictly
-* schedule based. Ticking time does not tick it on the window eviction fiber */
-class ConcurrentWindowSpec extends AnyFunSpec {
+ * schedule based. Ticking time does not tick it on the window eviction fiber */
+class TransactionWindowSpec extends AnyFunSpec {
   implicit def logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
   it("Write and read two entries") {
@@ -22,16 +22,16 @@ class ConcurrentWindowSpec extends AnyFunSpec {
         tsOne          <- currTs
         _              <- logger.info(s"Using ${tsOne} for first transaction")
         transactionOne <- IO.pure(Transaction("Nike", 240, 1581256213, tsOne))
-        _              <- window._1.putWindow(transactionOne)
+        _              <- window._1.putTransaction(transactionOne)
         _              <- logger.info(s"First Transaction Success")
         tsTwo          <- currTs
         _              <- logger.info(s"Using ${tsTwo} for second transaction ")
         transactionTwo <- IO.pure(Transaction("Addidas", 220, 1581256214, tsTwo))
-        _              <- window._1.putWindow(transactionTwo)
+        _              <- window._1.putTransaction(transactionTwo)
         _              <- logger.info(s"Second Transaction Success")
-        entry1         <- window._1.getWindow("Nike", 240)
+        entry1         <- window._1.getTransactionEntry("Nike", 240)
         entryOne       <- IO.pure(entry1.get)
-        entry2         <- window._1.getWindow("Addidas", 220)
+        entry2         <- window._1.getTransactionEntry("Addidas", 220)
         entryTwo       <- IO.pure(entry2.get)
       } yield Vector(entryOne, entryTwo).flatten
     }
@@ -48,14 +48,14 @@ class ConcurrentWindowSpec extends AnyFunSpec {
         tsOne          <- currTs
         _              <- logger.info(s"Using ${tsOne} for first transaction")
         transactionOne <- IO.pure(Transaction("Nike", 240, 1581256223, tsOne))
-        _              <- window._1.putWindow(transactionOne)
+        _              <- window._1.putTransaction(transactionOne)
         _              <- logger.info(s"First Transaction Success")
         tsTwo          <- currTs
         _              <- logger.info(s"Using ${tsTwo} for second transaction ")
         transactionTwo <- IO.pure(Transaction("Nike", 240, 1581256224, tsTwo))
-        _              <- window._1.putWindow(transactionTwo)
+        _              <- window._1.putTransaction(transactionTwo)
         _              <- logger.info(s"Second Transaction Success")
-        entry1         <- window._1.getWindow("Nike", 240)
+        entry1         <- window._1.getTransactionEntry("Nike", 240)
         entryOne       <- IO.pure(entry1.get)
       } yield entryOne
     }
@@ -72,16 +72,16 @@ class ConcurrentWindowSpec extends AnyFunSpec {
         tsOne          <- currTs
         _              <- logger.info(s"Using ${tsOne} for first transaction")
         transactionOne <- IO.pure(Transaction("Nike", 240, 1581256233, tsOne))
-        _              <- window._1.putWindow(transactionOne)
+        _              <- window._1.putTransaction(transactionOne)
         _              <- logger.info(s"First Transaction Success")
         _              <- IO.delay(Thread.sleep(10000))
         tsTwo          <- currTs
         _              <- logger.info(s"Using ${tsTwo} for second transaction ")
         transactionTwo <- IO.pure(Transaction("Nike", 240, 1581256234, tsTwo))
-        _              <- window._1.putWindow(transactionTwo)
+        _              <- window._1.putTransaction(transactionTwo)
         _              <- logger.info(s"Second Transaction Success")
         _              <- IO.delay(Thread.sleep(14000))
-        entry1         <- window._1.getWindow("Nike", 240)
+        entry1         <- window._1.getTransactionEntry("Nike", 240)
         entryOne       <- IO.pure(entry1.get)
       } yield entryOne
     }
@@ -97,16 +97,16 @@ class ConcurrentWindowSpec extends AnyFunSpec {
         tsOne            <- currTs
         _                <- logger.info(s"Using ${tsOne} for first transaction")
         transactionOne   <- IO.pure(Transaction("Nike", 240, 1581256263, tsOne))
-        _                <- window._1.putWindow(transactionOne)
+        _                <- window._1.putTransaction(transactionOne)
         _                <- logger.info(s"First Transaction Success")
         tsTwo            <- currTs
         _                <- logger.info(s"Using ${tsTwo} for second transaction ")
         transactionTwo   <- IO.pure(Transaction("Addidas", 240, 1581256264, tsTwo))
-        _                <- window._1.putWindow(transactionTwo)
+        _                <- window._1.putTransaction(transactionTwo)
         tsThree          <- currTs
         _                <- logger.info(s"Using ${tsThree} for third transaction ")
         transactionThree <- IO.pure(Transaction("Puma", 240, 1581256265, tsThree))
-        _                <- window._1.putWindow(transactionThree)
+        _                <- window._1.putTransaction(transactionThree)
         _                <- logger.info(s"Third Transaction Success")
         size             <- window._1.getWindowSize
       } yield size
@@ -122,17 +122,17 @@ class ConcurrentWindowSpec extends AnyFunSpec {
         tsOne            <- currTs
         _                <- logger.info(s"Using ${tsOne} for first transaction")
         transactionOne   <- IO.pure(Transaction("Nike", 240, 1581256263, tsOne))
-        _                <- window._1.putWindow(transactionOne)
+        _                <- window._1.putTransaction(transactionOne)
         _                <- logger.info(s"First Transaction Success")
         tsTwo            <- currTs
         _                <- logger.info(s"Using ${tsTwo} for second transaction ")
         transactionTwo   <- IO.pure(Transaction("Addidas", 240, 1581256264, tsTwo))
-        _                <- window._1.putWindow(transactionTwo)
+        _                <- window._1.putTransaction(transactionTwo)
         _                <- IO.delay(Thread.sleep(60000))
         tsThree          <- currTs
         _                <- logger.info(s"Using ${tsThree} for third transaction ")
         transactionThree <- IO.pure(Transaction("Puma", 240, 1581256265, tsThree))
-        _                <- window._1.putWindow(transactionThree)
+        _                <- window._1.putTransaction(transactionThree)
         _                <- logger.info(s"Third Transaction Success")
         size             <- window._1.getWindowSize
       } yield size
@@ -148,17 +148,17 @@ class ConcurrentWindowSpec extends AnyFunSpec {
         tsOne            <- currTs
         _                <- logger.info(s"Using ${tsOne} for first transaction")
         transactionOne   <- IO.pure(Transaction("Nike", 240, 1581256263, tsOne))
-        _                <- window._1.putWindow(transactionOne)
+        _                <- window._1.putTransaction(transactionOne)
         _                <- logger.info(s"First Transaction Success")
         _                <- IO.delay(Thread.sleep(30000))
         tsTwo            <- currTs
         _                <- logger.info(s"Using ${tsTwo} for second transaction ")
         transactionTwo   <- IO.pure(Transaction("Nike", 240, 1581256264, tsTwo))
-        _                <- window._1.putWindow(transactionTwo)
+        _                <- window._1.putTransaction(transactionTwo)
         tsThree          <- currTs
         _                <- logger.info(s"Using ${tsThree} for third transaction ")
         transactionThree <- IO.pure(Transaction("Nike", 240, 1581256265, tsThree))
-        _                <- window._1.putWindow(transactionThree)
+        _                <- window._1.putTransaction(transactionThree)
         _                <- logger.info(s"Third Transaction Success")
         size             <- window._1.getWindowSize
       } yield size

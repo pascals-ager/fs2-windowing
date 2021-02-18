@@ -12,17 +12,48 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-class ConcurrentWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO]) {
-  val windowMap                  = new ConcurrentHashMap[String, mutable.ListBuffer[(Long, Long)]]()
+/** ToDo: Implement windows for event time
+ *  ToDo: Implement windows for Generic T
+ *  TransactionWindow maintains a cache of Transactions for the last 'windowSize' duration.
+ *  The implementation uses event processingTime (arrival time) rather than event transaction time (event time).
+ *  What that means is that a Transaction with event time: "2019-02-13T10:00:00.000Z" and another with event time:
+ * "2019-02-13T11:00:00.000Z" although have one hour between their event times; will belong to the same window of size
+ *  2 minutes, if they arrive/are-seen by the streaming system without their natural delay.
+ * */
+class TransactionWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO]) {
+  /* windowMap models the underlying window as HashMap where:
+  *  K -> Combination of Transaction merchant and amount.
+  *  This can be replaced by any Transaction => String to optimize for common lookup operations which require
+  *  O(1) performance. For simpler design the function used for K is Transaction => Transaction.merchant+Transaction.amount
+  *  This sufficiently models the use case.
+  *  V -> List[(transactionTime, processingTime)]
+  *  New transactions for the same key are appended to the list with their timestamp metadata as the value
+  *  Eviction -> Evict K entries and Evict `processingTime` timestamp entries in V after `windowSize` expiry period.  *
+  * */
+  private val windowMap                  = new ConcurrentHashMap[String, mutable.ListBuffer[(Long, Long)]]()
   lazy val widowSizeMs: IO[Long] = IO.pure(windowSize.toMillis)
 
-  def clearWindow(): IO[Unit] = IO.delay(windowMap.clear())
+  /**
+   * Clears the Transaction Window in IO
+   * @return Unit suspended in IO
+   *
+   */
+  private def clearWindow(): IO[Unit] = IO.delay(windowMap.clear())
 
-  def getWindow(merchant: String, amount: Int): IO[Option[mutable.Seq[(Long, Long)]]] = {
+  /**
+   * @param merchant: The merchant for the transaction
+   * @param amount: The amount in the transaction
+   * @return The entry for the transaction
+   */
+  def getTransactionEntry(merchant: String, amount: Int): IO[Option[mutable.Seq[(Long, Long)]]] = {
     IO.delay(Option(windowMap.get(merchant + amount.toString)))
   }
 
-  def putWindow(transaction: Transaction): IO[ListBuffer[(Long, Long)]] =
+  /**
+   * @param transaction: Transaction that must be inserted into the window
+   * @return The state of the Transaction entry suspended in IO
+   */
+  def putTransaction(transaction: Transaction): IO[ListBuffer[(Long, Long)]] =
     IO.delay {
       if (windowMap.containsKey(transaction.merchant + transaction.amount.toString)) {
         var transactionTimeEntries: mutable.ListBuffer[(Long, Long)] =
@@ -37,6 +68,10 @@ class ConcurrentWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO]) 
       }
     }
 
+  /**
+   * Size is the total number of transaction entries (V)
+   * @return Size of the TransactionWindow
+   */
   def getWindowSize: IO[Int] = IO.delay {
     var size = 0
     for (transactionTimeEntries <- windowMap.values().asScala) {
@@ -45,6 +80,10 @@ class ConcurrentWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO]) 
     size
   }
 
+  /**
+   * Evict K entries and Evict `processingTime` timestamp entries in V after `windowSize` expiry period.
+   * @return A runnable that can be scheduled in the provided scheduler
+   */
   def evictionFunction(implicit scheduler: Scheduler): IO[Runnable] = IO.delay {
     new Runnable {
       override def run(): Unit = {
@@ -72,19 +111,19 @@ class ConcurrentWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO]) 
   }
 }
 
-object ConcurrentWindow {
+object TransactionWindow {
   implicit val cpuScheduler: SchedulerService = Scheduler.computation(1, name = "cpu-bound-eviction-thread")
   def acquireWindow(
       windowSize: FiniteDuration
-  )(implicit logger: Logger[IO]): Resource[IO, (ConcurrentWindow, Cancelable)] =
+  )(implicit logger: Logger[IO]): Resource[IO, (TransactionWindow, Cancelable)] =
     Resource.make {
       for {
-        window   <- IO.delay(new ConcurrentWindow(windowSize))
+        window   <- IO.delay(new TransactionWindow(windowSize))
         runnable <- window.evictionFunction
         evict <- IO.delay(
           cpuScheduler.scheduleWithFixedDelay(
-            windowSize._1,
-            windowSize._1,
+            windowSize._1 / 2,
+            windowSize._1 / 2,
             windowSize._2,
             runnable
           )
