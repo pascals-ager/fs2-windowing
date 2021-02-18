@@ -10,7 +10,7 @@ import io.nubank.challenge.authorizer.window.TransactionWindow
 object ValidationService {
 
   /**
-   * @param Account: The account to be validated
+   * @param newAccount: The account to be validated
    * @return Returns DomainValidation on invalid and Account on Valid
    */
   def validateAccount(
@@ -32,8 +32,8 @@ object ValidationService {
 
   /**
    * Validate if the account used by the transaction is Active
-   * @param Transaction: The transaction to be validated
-   * @param Account: The transaction account against which the transaction is validated
+   * @param transaction: The transaction to be validated
+   * @param transactionAccount: The current state of the account against which the transaction is validated
    * @return Returns DomainValidation on invalid and Transaction on Valid
    */
   def validatedAccountActive(
@@ -54,8 +54,8 @@ object ValidationService {
 
   /**
    * Validate if the account used by the transaction has sufficient balance.
-   * @param Transaction: The transaction to be validated
-   * @param Account: The transaction account against which the transaction is validated
+   * @param transaction: The transaction to be validated
+   * @param transactionAccount: The current state of the account against which the transaction is validated
    * @return Returns DomainValidation on invalid and Transaction on Valid
    */
   def validatedAccountBalance(
@@ -76,7 +76,7 @@ object ValidationService {
 
   /**
    * Validate if the transaction does not violate high frequency tolerance.
-   * @param Transaction: The transaction to be validated
+   * @param transaction: The transaction to be validated
    * @return Returns DomainValidation on invalid and Transaction on Valid
    */
   def validatedTransactionFrequency(
@@ -93,7 +93,7 @@ object ValidationService {
 
   /**
    * Validate if the transaction does not violate doubled transaction tolerance.
-   * @param Transaction: The transaction to be validation
+   * @param transaction: The transaction to be validated
    * @return Returns DomainValidation on invalid and Transaction on Valid
    */
   def validatedDoubledTransaction(
@@ -117,8 +117,8 @@ object ValidationService {
 
   /**
    * Validate an AccountEvent and apply it to AccountStore
-   * @param Account: The account to be validated and appied to AccountStore
-   * @return Returns state of the Account and any violations that may have occured
+   * @param  account: The account to be validated and applied to AccountStore
+   * @return Returns state of the Account and any violations that may have occurred
    */
   def validateAndPut(account: Account)(implicit store: AccountStoreService): IO[AccountState] = {
     for {
@@ -131,8 +131,8 @@ object ValidationService {
   }
   /**
    * Validate an TransactionEvent and apply it the AccountStore as well TransactionWindow
-   * @param Transactoin: The transaction to be validated and applied to AccountStore and TransactionWindow
-   * @return Returns state of the Account used in the transactions with any violations that may have occured
+   * @param transaction: The transaction to be validated and applied to AccountStore and TransactionWindow
+   * @return Returns state of the Account used in the transactions with any violations that may have occurred
    */
   def validateAndPut(
       transaction: Transaction
