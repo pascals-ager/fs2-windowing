@@ -50,7 +50,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(testOneWriteRead._2.account.isEmpty)
     assert(testOneWriteRead._1.violations.isEmpty)
     assert(testOneWriteRead._2.violations.length == 1)
-    assert(testOneWriteRead._2.violations.head == AccountAlreadyInit)
+    assert(testOneWriteRead._2.violations.head == `account-already-initialized`)
     assert(testOneWriteRead._3.contains(firstAccount))
   }
 
@@ -74,7 +74,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(testOneWriteRead._2.account.contains(secondAccount))
     assert(testOneWriteRead._1.violations.length == 1)
     assert(testOneWriteRead._2.violations.isEmpty)
-    assert(testOneWriteRead._1.violations.head == AccountNotInit)
+    assert(testOneWriteRead._1.violations.head == `account-not-initialized`)
     assert(testOneWriteRead._3.contains(secondAccount))
   }
 
@@ -146,7 +146,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(testOutputSeq._1.violations.isEmpty)
     assert(testOutputSeq._2.account.contains(beforeTransactionAccount))
     assert(testOutputSeq._2.violations.length == 1)
-    assert(testOutputSeq._2.violations.head == CardInactive)
+    assert(testOutputSeq._2.violations.head == `card-not-active`)
     assert(testOutputSeq._3.contains(beforeTransactionAccount))
     assert(testOutputSeq._4.isEmpty)
   }
@@ -182,7 +182,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(testOutputSeq._1.violations.isEmpty)
     assert(testOutputSeq._2.account.contains(beforeTransactionAccount))
     assert(testOutputSeq._2.violations.length == 1)
-    assert(testOutputSeq._2.violations.head == InsufficientLimit)
+    assert(testOutputSeq._2.violations.head == `insufficient-limit`)
     assert(testOutputSeq._3.contains(beforeTransactionAccount))
     assert(testOutputSeq._4.isEmpty)
   }
@@ -266,7 +266,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(testOutputSeq._4.violations.isEmpty)
     assert(testOutputSeq._5.account.contains(afterThirdTransactionAccount))
     assert(testOutputSeq._5.violations.size == 2)
-    assert(testOutputSeq._5.violations.toSet == Set(HighFreqTransaction, InsufficientLimit))
+    assert(testOutputSeq._5.violations.toSet == Set(`high-frequency-small-interval`, `insufficient-limit`))
     assert(testOutputSeq._6.get.size == 1)
     assert(testOutputSeq._6.get.head._1 == 1581256233)
     assert(testOutputSeq._7.get.size == 1)
@@ -326,7 +326,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(testOutputSeq._2.violations.isEmpty)
     assert(testOutputSeq._3.account.contains(afterFirstTransactionAccount))
     assert(testOutputSeq._3.violations.size == 2)
-    assert(testOutputSeq._3.violations.toSet == Set(DoubledTransaction, InsufficientLimit))
+    assert(testOutputSeq._3.violations.toSet == Set(`doubled-transaction`, `insufficient-limit`))
     assert(testOutputSeq._4.get.size == 1)
     assert(testOutputSeq._4.get.head._1 == 1581256243)
 

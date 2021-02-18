@@ -13,9 +13,8 @@ import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 /**ToDo: Implement windows for event time.
-*  ToDo: Implement windows for Generic T.
+  *  ToDo: Implement windows for Generic T.
 **/
-
 /**
   *  TransactionWindow maintains a cache of Transactions for the last 'windowSize' duration.
   *  The implementation uses event processingTime (arrival time) rather than event transaction time (event time).

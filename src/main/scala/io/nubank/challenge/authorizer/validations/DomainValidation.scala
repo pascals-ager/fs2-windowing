@@ -7,27 +7,27 @@ sealed trait DomainValidation {
   def violationMessage: String
 }
 
-case object AccountAlreadyInit extends DomainValidation {
+case object `account-already-initialized` extends DomainValidation {
   override def violationMessage: String = "account-already-initialized"
 }
 
-case object AccountNotInit extends DomainValidation {
+case object `account-not-initialized` extends DomainValidation {
   override def violationMessage: String = "account-not-initialized"
 }
 
-case object CardInactive extends DomainValidation {
+case object `card-not-active` extends DomainValidation {
   override def violationMessage: String = "card-not-active"
 }
 
-case object InsufficientLimit extends DomainValidation {
+case object `insufficient-limit` extends DomainValidation {
   override def violationMessage: String = "insufficient-limit"
 }
 
-case object HighFreqTransaction extends DomainValidation {
+case object `high-frequency-small-interval` extends DomainValidation {
   override def violationMessage: String = "high-frequency-small-interval"
 }
 
-case object DoubledTransaction extends DomainValidation {
+case object `doubled-transaction` extends DomainValidation {
   override def violationMessage: String = "doubled-transaction"
 }
 
