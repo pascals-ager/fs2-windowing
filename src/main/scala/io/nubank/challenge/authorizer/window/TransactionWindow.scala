@@ -12,8 +12,11 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.FiniteDuration
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-/** ToDo: Implement windows for event time
-  *  ToDo: Implement windows for Generic T
+/**ToDo: Implement windows for event time.
+*  ToDo: Implement windows for Generic T.
+**/
+
+/**
   *  TransactionWindow maintains a cache of Transactions for the last 'windowSize' duration.
   *  The implementation uses event processingTime (arrival time) rather than event transaction time (event time).
   *  What that means is that a Transaction with event time: "2019-02-13T10:00:00.000Z" and another with event time:
@@ -50,7 +53,7 @@ class TransactionWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO])
   }
 
   /**
-    * @param transaction: Transaction that must be inserted into the window
+    * @param Transaction: Transaction that must be inserted into the window
     * @return The state of the Transaction entry suspended in IO
     */
   def putTransaction(transaction: Transaction): IO[ListBuffer[(Long, Long)]] =

@@ -9,6 +9,7 @@ object Dependencies {
     val scalatest = "3.1.1"
     val log4cats = "1.2.0-RC2"
     val monix = "3.3.0"
+    val typesafe = "1.4.1"
   }
 
   lazy val fs2 = Seq(
@@ -39,6 +40,10 @@ object Dependencies {
 
   lazy val monix = Seq (
     "io.monix" %% "monix-execution" % Versions.monix
+  )
+
+  lazy val typedconfig = Seq(
+    "com.typesafe" % "config" % Versions.typesafe
   )
 
 }

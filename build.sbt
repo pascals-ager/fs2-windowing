@@ -36,7 +36,18 @@ lazy val authorizerNubank = (project in file(".")).
   settings(mainClass in Compile := Some("io.nubank.challenge.authorizer.Authorizer")).
   settings(commonSettings: _*).
   settings(
-    libraryDependencies ++= fs2 ++ cache ++ circe ++ scalatest ++ log4cats ++ monix
+    libraryDependencies ++= fs2 ++ cache ++ circe ++ scalatest ++ log4cats ++ monix ++ typedconfig
   )
 
 scalafmtOnCompile := true
+
+/* Default the image is built on openjdk11 */
+dockerBaseImage := "adoptopenjdk/openjdk11"
+daemonUser in Docker    := "authorizerNubank"
+/*
+* Customize this for default window size
+* */
+dockerEnvVars := Map(
+  "TIME_WINDOW_SIZE_SECONDS" -> "120",
+  "TOPIC_QUEUE_SIZE" -> "10"
+)
