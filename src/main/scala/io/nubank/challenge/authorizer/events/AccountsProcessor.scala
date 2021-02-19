@@ -5,7 +5,6 @@ import cats.effect.concurrent.Semaphore
 import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, AccountState}
 import io.nubank.challenge.authorizer.stores.AccountStoreService
 import io.nubank.challenge.authorizer.validations.ValidationService.validateAccount
-import io.nubank.challenge.authorizer.window.TransactionWindow
 
 class AccountsProcessor(store: AccountStoreService) {
 

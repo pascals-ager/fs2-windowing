@@ -1,12 +1,16 @@
 package io.nubank.challenge.authorizer
 
-import cats.effect.concurrent.Semaphore
 import cats.effect.{ExitCode, IO, IOApp}
 import fs2.Stream
 import fs2.concurrent.{SignallingRef, Topic}
 import io.circe._
 import io.nubank.challenge.authorizer.configs.createStreamsProps
 import io.nubank.challenge.authorizer.events.EventsProcessor
+import io.nubank.challenge.authorizer.exception.DomainException.{
+  DecodingFailureException,
+  ParsingFailureException,
+  UnrecognizedEventException
+}
 import io.nubank.challenge.authorizer.external.ExternalDomain.{ExternalEvent, Start}
 import io.nubank.challenge.authorizer.stores.AccountStoreService
 import io.nubank.challenge.authorizer.window.TransactionWindow.acquireWindow
@@ -36,7 +40,15 @@ object Authorizer extends IOApp {
         .interruptWhen(interrupter)
     } yield ()
 
-    outer.compile.drain
+    outer
+      .handleErrorWith {
+        case unrecognized: UnrecognizedEventException => Stream.eval(logger.error(unrecognized.msg))
+        case parsing: ParsingFailureException         => Stream.eval(logger.error(parsing.msg))
+        case decoding: DecodingFailureException       => Stream.eval(logger.error(decoding.msg))
+        case throwable: Throwable                     => Stream.eval(logger.error(s"Unknown exception occurred:  ${throwable.getMessage}"))
+      }
+      .compile
+      .drain
       .as(ExitCode.Success)
   }
 

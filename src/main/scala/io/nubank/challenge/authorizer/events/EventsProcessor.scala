@@ -10,26 +10,16 @@ import io.circe.syntax.EncoderOps
 import io.nubank.challenge.authorizer.exception.DomainException.{
   DecodingFailureException,
   ParsingFailureException,
-  UnrecognizedEventType
+  UnrecognizedEventException
 }
 import io.nubank.challenge.authorizer.external.ExternalDomain.{
-  Account,
   AccountEvent,
   AccountState,
   ExternalEvent,
   Start,
-  Transaction,
   TransactionEvent
 }
 import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.validations.{DomainValidation, ValidationService}
-import io.nubank.challenge.authorizer.validations.ValidationService.{
-  validateAccount,
-  validatedAccountActive,
-  validatedAccountBalance,
-  validatedDoubledTransaction,
-  validatedTransactionFrequency
-}
 import io.nubank.challenge.authorizer.window.TransactionWindow
 import org.typelevel.log4cats.Logger
 
@@ -75,7 +65,7 @@ class EventsProcessor(
             } yield enc
           } else {
             Stream.raiseError[IO](
-              UnrecognizedEventType("Undefined event received. Expecting account or transaction event types only.")
+              UnrecognizedEventException("Undefined event received. Expecting account or transaction event types only.")
             )
           }
         case Left(ex) => Stream.raiseError[IO](ParsingFailureException(ex.message))

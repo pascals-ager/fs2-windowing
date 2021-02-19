@@ -1,11 +1,8 @@
 package io.nubank.challenge.authorizer.stores
 
-import cats.effect.concurrent.{Ref, Semaphore}
+import cats.effect.concurrent.Ref
 import cats.effect.{IO, Resource}
-import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, Transaction}
-
-import scala.collection.mutable
-import scala.util.Try
+import io.nubank.challenge.authorizer.external.ExternalDomain.Account
 
 trait AccountStoreService {
 
