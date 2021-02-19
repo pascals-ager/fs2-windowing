@@ -13,7 +13,7 @@ import scala.collection.mutable
 /* Unable to use the TestScheduler to simulate time ticks because the eviction is strictly
  * schedule based. Ticking time does not tick it on the window eviction fiber */
 class TransactionWindowSpec extends AnyFunSpec {
-  implicit def logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+  implicit val logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
 
   it("Write and read two entries") {
     val test: IO[Vector[(Long, Long)]] = acquireWindow(2.minutes).use { window =>

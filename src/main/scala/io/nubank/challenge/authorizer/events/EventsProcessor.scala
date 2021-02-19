@@ -1,5 +1,6 @@
 package io.nubank.challenge.authorizer.events
 
+import cats.effect.concurrent.Semaphore
 import cats.effect.{Blocker, ContextShift, IO, Timer}
 import fs2.{Pipe, Stream}
 import fs2.concurrent.Topic
@@ -11,18 +12,40 @@ import io.nubank.challenge.authorizer.exception.DomainException.{
   ParsingFailureException,
   UnrecognizedEventType
 }
-import io.nubank.challenge.authorizer.external.ExternalDomain.{AccountEvent, ExternalEvent, Start, TransactionEvent}
+import io.nubank.challenge.authorizer.external.ExternalDomain.{
+  Account,
+  AccountEvent,
+  AccountState,
+  ExternalEvent,
+  Start,
+  Transaction,
+  TransactionEvent
+}
 import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.validations.ValidationService
+import io.nubank.challenge.authorizer.validations.{DomainValidation, ValidationService}
+import io.nubank.challenge.authorizer.validations.ValidationService.{
+  validateAccount,
+  validatedAccountActive,
+  validatedAccountBalance,
+  validatedDoubledTransaction,
+  validatedTransactionFrequency
+}
 import io.nubank.challenge.authorizer.window.TransactionWindow
 import org.typelevel.log4cats.Logger
 
-class EventsProcessor(topic: Topic[IO, Either[DecodingFailure, ExternalEvent]])(
+class EventsProcessor(
+    store: AccountStoreService,
+    window: TransactionWindow,
+    topic: Topic[IO, Either[DecodingFailure, ExternalEvent]]
+)(
     implicit timer: Timer[IO],
     threadpool: ContextShift[IO],
     logger: Logger[IO]
 ) {
 
+  implicit val semaphore: Stream[IO, Semaphore[IO]] = Stream.eval(Semaphore[IO](1))
+  val accountsHandler                               = new AccountsProcessor(store)
+  val transactionsHandler                           = new TransactionsProcessor(store, window)
   def consumeEvents(): Stream[IO, Unit] =
     Stream
       .resource(Blocker[IO])
@@ -67,22 +90,47 @@ class EventsProcessor(topic: Topic[IO, Either[DecodingFailure, ExternalEvent]])(
       } yield pub
     }
 
-  def authorizeEvents()(implicit store: AccountStoreService, window: TransactionWindow): Stream[IO, Unit] = {
-    val events = topic.subscribe(10)
-    def authorizeTransactions: Pipe[IO, Either[DecodingFailure, ExternalEvent], Unit] = _.flatMap {
-      case Left(ex) => Stream.raiseError[IO](DecodingFailureException(ex.message))
-      case Right(value) =>
-        value match {
-          case AccountEvent(account) =>
-            Stream.eval(ValidationService.validateAndPut(account)).evalMap(item => IO.delay(println(item.asJson)))
+  def authorizeEvents: Pipe[IO, Either[DecodingFailure, ExternalEvent], Option[AccountState]] = _.flatMap {
+    case Left(ex) => Stream.raiseError[IO](DecodingFailureException(ex.message))
+    case Right(value) =>
+      value match {
+        case AccountEvent(account) =>
+          for {
+            sem <- semaphore
+            acctState <- Stream
+              .eval(accountsHandler.validateAndPutAccount(account)(sem))
+          } yield Some(acctState)
 
-          case TransactionEvent(transaction) =>
-            Stream.eval(ValidationService.validateAndPut(transaction)).evalMap(item => IO.delay(println(item.asJson)))
+        case TransactionEvent(transaction) =>
+          for {
+            sem <- semaphore
+            acctState <- Stream
+              .eval(transactionsHandler.validateAndPutTransaction(transaction)(sem))
+          } yield Some(acctState)
 
-          case Start => Stream.emit(())
-        }
-    }
-    events.through(authorizeTransactions)
+        case Start => Stream.emit(None)
+      }
+  }
+
+  def publishState: Pipe[IO, Option[AccountState], Unit] = _.flatMap { in =>
+    val publish: Stream[IO, Unit] = for {
+      _ <- Stream.eval(logger.info("Publishing AccountState to stdout."))
+      pub <- in match {
+        case Some(acctState) => Stream.eval(IO.delay(println(acctState.asJson)))
+        case None            => Stream.emit(())
+      }
+    } yield pub
+    publish
+  }
+
+  def eventsSubscriber: Stream[IO, Either[DecodingFailure, ExternalEvent]] = {
+    topic.subscribe(10)
+  }
+
+  def eventsHandler(): Stream[IO, Unit] = {
+    eventsSubscriber
+      .through(authorizeEvents)
+      .through(publishState)
   }
 
 }

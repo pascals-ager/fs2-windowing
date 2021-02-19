@@ -2,6 +2,7 @@ package io.nubank.challenge.authorizer.validations
 
 import cats.data.ValidatedNec
 import cats.effect.IO
+import cats.effect.concurrent.Semaphore
 import cats.implicits._
 import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, AccountState, Transaction}
 import io.nubank.challenge.authorizer.stores.AccountStoreService
@@ -114,51 +115,5 @@ object ValidationService {
         case None => IO.pure(transaction.validNec)
       }
     } yield valid
-
-  /**
-    * Validate an AccountEvent and apply it to AccountStore
-    * @param  account: The account to be validated and applied to AccountStore
-    * @return Returns state of the Account and any violations that may have occurred
-    */
-  def validateAndPut(account: Account)(implicit store: AccountStoreService): IO[AccountState] = {
-    for {
-      valid <- validateAccount(account)(store)
-      accState <- valid.toEither match {
-        case Right(value) => store.putAccount(value).map(old => AccountState(Some(value), List()))
-        case Left(ex)     => IO.pure(ex.toChain.toList).map(errs => AccountState(None, errs))
-      }
-    } yield accState
-  }
-
-  /**
-    * Validate an TransactionEvent and apply it the AccountStore as well TransactionWindow
-    * @param transaction: The transaction to be validated and applied to AccountStore and TransactionWindow
-    * @return Returns state of the Account used in the transactions with any violations that may have occurred
-    */
-  def validateAndPut(
-      transaction: Transaction
-  )(implicit store: AccountStoreService, window: TransactionWindow): IO[AccountState] =
-    for {
-      transactionAccount       <- store.getAccount()
-      acctActiveValidation     <- validatedAccountActive(transaction, transactionAccount)
-      acctBalanceValidation    <- validatedAccountBalance(transaction, transactionAccount)
-      transactFreqValidation   <- validatedTransactionFrequency(transaction)(window)
-      transactDoubleValidation <- validatedDoubledTransaction(transaction)(window)
-      validations <- IO.delay(
-        Seq(acctActiveValidation, acctBalanceValidation, transactFreqValidation, transactDoubleValidation)
-      )
-      allValid  <- IO.delay(validations.forall(item => item.isValid))
-      allErrors <- IO.delay(validations.flatMap(va => va.fold(l => l.toChain.toList, r => List[DomainValidation]())))
-      acctState <- if (allValid) {
-        store
-          .putAccount(
-            Account(transactionAccount.get.`active-card`, transactionAccount.get.`available-limit` - transaction.amount)
-          )
-          .flatMap { newAcc => window.putTransaction(transaction).map(io => AccountState(newAcc, allErrors.toList)) }
-      } else {
-        IO.delay(AccountState(transactionAccount, allErrors.toList))
-      }
-
-    } yield acctState
 
 }

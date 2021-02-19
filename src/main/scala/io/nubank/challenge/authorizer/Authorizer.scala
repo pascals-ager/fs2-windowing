@@ -1,5 +1,6 @@
 package io.nubank.challenge.authorizer
 
+import cats.effect.concurrent.Semaphore
 import cats.effect.{ExitCode, IO, IOApp}
 import fs2.Stream
 import fs2.concurrent.{SignallingRef, Topic}
@@ -28,9 +29,9 @@ object Authorizer extends IOApp {
       topic       <- Stream.eval(Topic[IO, Either[DecodingFailure, ExternalEvent]](Right(Start)))
       store       <- Stream.resource(AccountStoreService.create())
       window      <- Stream.resource(acquireWindow(props.getProperty("TIME_WINDOW_SIZE_SECONDS").toInt.seconds))
-      authService = new EventsProcessor(topic)
+      authService = new EventsProcessor(store, window._1, topic)
       _ <- authService
-        .authorizeEvents()(store, window._1)
+        .eventsHandler()
         .concurrently(authService.consumeEvents())
         .interruptWhen(interrupter)
     } yield ()
