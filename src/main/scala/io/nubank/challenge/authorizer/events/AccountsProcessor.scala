@@ -5,8 +5,9 @@ import cats.effect.concurrent.Semaphore
 import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, AccountState}
 import io.nubank.challenge.authorizer.stores.AccountStoreService
 import io.nubank.challenge.authorizer.validations.ValidationService.validateAccount
+import org.typelevel.log4cats.Logger
 
-class AccountsProcessor(store: AccountStoreService) {
+class AccountsProcessor(store: AccountStoreService)(implicit logger: Logger[IO]) {
 
   /**
     * Validate an AccountEvent and apply it to AccountStore
@@ -15,15 +16,14 @@ class AccountsProcessor(store: AccountStoreService) {
     */
   def validateAndPutAccount(
       account: Account
-  )(implicit semaphore: Semaphore[IO]): IO[AccountState] = {
+  ): IO[AccountState] = {
     for {
-      acq   <- semaphore.acquire
       valid <- validateAccount(account)(store)
       accState <- valid.toEither match {
         case Right(value) => store.putAccount(value).map(old => AccountState(Some(value), List()))
         case Left(ex)     => IO.pure(ex.toChain.toList).map(errs => AccountState(None, errs))
       }
-      rel <- semaphore.release
+      _ <- logger.debug(s"Account state modified to: ${accState.account}")
     } yield accState
   }
 }

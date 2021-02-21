@@ -8,6 +8,8 @@ import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, AccountS
 import io.nubank.challenge.authorizer.stores.AccountStoreService
 import io.nubank.challenge.authorizer.window.TransactionWindow
 
+import scala.util.Random
+
 object ValidationService {
 
   /**
@@ -24,8 +26,8 @@ object ValidationService {
           if (newAccount.`available-limit` >= 0) IO.pure(newAccount.validNec)
           else IO.pure(`account-not-initialized`.invalidNec)
         case Some(acc) =>
-          if ((acc.`active-card` && !(newAccount.`active-card`) && (acc.`available-limit` == newAccount.`available-limit`)) ||
-              (!(acc.`active-card`) && newAccount.`active-card` && (acc.`available-limit` == newAccount.`available-limit`)))
+          if ((acc.`active-card` && !(newAccount.`active-card`) /*&& (acc.`available-limit` == newAccount.`available-limit`)*/ ) ||
+              (!(acc.`active-card`) && newAccount.`active-card` /*&& (acc.`available-limit` == newAccount.`available-limit`)*/ ))
             IO.pure(newAccount.validNec)
           else IO.pure(`account-already-initialized`.invalidNec)
       }
@@ -64,6 +66,7 @@ object ValidationService {
       transactionAccount: Option[Account]
   ): IO[ValidatedNec[DomainValidation, Transaction]] =
     for {
+//      transactionAccount <- store.getAccount()
       valid <- transactionAccount match {
         case Some(acc) =>
           if (acc.`available-limit` >= transaction.amount) {
@@ -84,8 +87,9 @@ object ValidationService {
       transaction: Transaction
   )(implicit window: TransactionWindow): IO[ValidatedNec[DomainValidation, Transaction]] =
     for {
-      transactionCount <- window.getWindowSize
-      valid <- if (transactionCount < 3) {
+      frequencyTolerance <- window.frequentTransactionTolerance
+      transactionCount   <- window.getWindowSize
+      valid <- if (transactionCount < frequencyTolerance) {
         IO.pure(transaction.validNec)
       } else {
         IO.pure(`high-frequency-small-interval`.invalidNec)
@@ -101,13 +105,14 @@ object ValidationService {
       transaction: Transaction
   )(implicit window: TransactionWindow): IO[ValidatedNec[DomainValidation, Transaction]] =
     for {
-      prevTransaction <- window.getTransactionEntry(transaction.merchant, transaction.amount)
+      prevTransaction  <- window.getTransactionEntry(transaction.merchant, transaction.amount)
+      doubledTolerance <- window.doubledTransactionTolerance
       valid <- prevTransaction match {
         case Some(entry) =>
           /* This is pretty naive. In this scenario, this works.
            * Here the eviction interval is 2 mins and tolerance is 1 transaction per 2 mins
            * */
-          if (entry.isEmpty) {
+          if (entry.length < doubledTolerance) {
             IO.pure(transaction.validNec)
           } else {
             IO.pure(`doubled-transaction`.invalidNec)

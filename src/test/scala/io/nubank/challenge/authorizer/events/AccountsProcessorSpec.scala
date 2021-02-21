@@ -31,7 +31,7 @@ class AccountsProcessorSpec extends AnyFunSpec {
       for {
         sem <- semaphore
         accountsHandler = new AccountsProcessor(store)
-        accState <- accountsHandler.validateAndPutAccount(firstAccount)(sem)
+        accState <- accountsHandler.validateAndPutAccount(firstAccount)
         firstGet <- store.getAccount()
       } yield (accState, firstGet)
     }
@@ -50,8 +50,8 @@ class AccountsProcessorSpec extends AnyFunSpec {
         for {
           sem <- semaphore
           accountsHandler = new AccountsProcessor(store)
-          accStateOne <- accountsHandler.validateAndPutAccount(firstAccount)(sem)
-          accStateTwo <- accountsHandler.validateAndPutAccount(secondAccount)(sem)
+          accStateOne <- accountsHandler.validateAndPutAccount(firstAccount)
+          accStateTwo <- accountsHandler.validateAndPutAccount(secondAccount)
           firstGet    <- store.getAccount()
         } yield (accStateOne, accStateTwo, firstGet)
       }
@@ -75,8 +75,8 @@ class AccountsProcessorSpec extends AnyFunSpec {
         for {
           sem <- semaphore
           accountsHandler = new AccountsProcessor(store)
-          accStateOne <- accountsHandler.validateAndPutAccount(firstAccount)(sem)
-          accStateTwo <- accountsHandler.validateAndPutAccount(secondAccount)(sem)
+          accStateOne <- accountsHandler.validateAndPutAccount(firstAccount)
+          accStateTwo <- accountsHandler.validateAndPutAccount(secondAccount)
           firstGet    <- store.getAccount()
         } yield (accStateOne, accStateTwo, firstGet)
       }

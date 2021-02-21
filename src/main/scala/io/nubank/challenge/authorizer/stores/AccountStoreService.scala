@@ -3,6 +3,7 @@ package io.nubank.challenge.authorizer.stores
 import cats.effect.concurrent.Ref
 import cats.effect.{IO, Resource}
 import io.nubank.challenge.authorizer.external.ExternalDomain.Account
+import org.typelevel.log4cats.Logger
 
 trait AccountStoreService {
 
@@ -24,7 +25,7 @@ trait AccountStoreService {
 object AccountStoreService {
 
   /* Effectively models a single Account */
-  def create(): Resource[IO, AccountStoreService] = {
+  def create()(implicit logger: Logger[IO]): Resource[IO, AccountStoreService] = {
     val open: IO[Ref[IO, Option[Account]]] = Ref[IO].of {
       None
     }

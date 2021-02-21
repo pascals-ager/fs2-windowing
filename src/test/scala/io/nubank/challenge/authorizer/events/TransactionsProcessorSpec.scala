@@ -21,9 +21,10 @@ import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration.DurationInt
 
 class TransactionsProcessorSpec extends AnyFunSpec {
-  implicit def logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
+
   private implicit val cs: ContextShift[IO]          = IO.contextShift(global)
   private implicit val timer: Timer[IO]              = IO.timer(global)
+  implicit val logger: SelfAwareStructuredLogger[IO] = Slf4jLogger.getLogger[IO]
   implicit val semaphore                             = Semaphore[IO](1)
 
   it("Should validate single transaction") {
@@ -42,8 +43,8 @@ class TransactionsProcessorSpec extends AnyFunSpec {
           tsOne          <- currTs
           _              <- logger.info(s"Using ${tsOne} for first transaction")
           transactionOne <- IO.pure(Transaction("Nike", 240, 1581256223, tsOne))
-          acctStateOne   <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)(sem)
-          acctStateTwo   <- transactionsHandler.validateAndPutTransaction(transactionOne)(sem)
+          acctStateOne   <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)
+          acctStateTwo   <- transactionsHandler.validateAndPutTransaction(transactionOne)
           acct           <- store.getAccount()
           entry          <- window._1.getTransactionEntry("Nike", 240)
         } yield (acctStateOne, acctStateTwo, acct, entry)
@@ -81,8 +82,8 @@ class TransactionsProcessorSpec extends AnyFunSpec {
           tsOne          <- currTs
           _              <- logger.info(s"Using ${tsOne} for first transaction")
           transactionOne <- IO.pure(Transaction("Nike", 240, 1581256223, tsOne))
-          acctStateOne   <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)(sem)
-          acctStateTwo   <- transactionsHandler.validateAndPutTransaction(transactionOne)(sem)
+          acctStateOne   <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)
+          acctStateTwo   <- transactionsHandler.validateAndPutTransaction(transactionOne)
           acct           <- store.getAccount()
           entry          <- window._1.getTransactionEntry("Nike", 240)
         } yield (acctStateOne, acctStateTwo, acct, entry)
@@ -120,8 +121,8 @@ class TransactionsProcessorSpec extends AnyFunSpec {
           tsOne          <- currTs
           _              <- logger.info(s"Using ${tsOne} for first transaction")
           transactionOne <- IO.pure(Transaction("Nike", 240, 1581256223, tsOne))
-          acctStateOne   <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)(sem)
-          acctStateTwo   <- transactionsHandler.validateAndPutTransaction(transactionOne)(sem)
+          acctStateOne   <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)
+          acctStateTwo   <- transactionsHandler.validateAndPutTransaction(transactionOne)
           acct           <- store.getAccount()
           entry          <- window._1.getTransactionEntry("Nike", 240)
         } yield (acctStateOne, acctStateTwo, acct, entry)
@@ -172,20 +173,20 @@ class TransactionsProcessorSpec extends AnyFunSpec {
           tsOne            <- currTs
           _                <- logger.info(s"Using ${tsOne} for first transaction")
           transactionOne   <- IO.pure(Transaction("Nike", 250, 1581256233, tsOne))
-          acctStateOne     <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)(sem)
-          acctStateTwo     <- transactionsHandler.validateAndPutTransaction(transactionOne)(sem)
+          acctStateOne     <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)
+          acctStateTwo     <- transactionsHandler.validateAndPutTransaction(transactionOne)
           tsTwo            <- currTs
           _                <- logger.info(s"Using ${tsTwo} for second transaction")
           transactionTwo   <- IO.pure(Transaction("Adidas", 250, 1581256234, tsTwo))
-          acctStateThree   <- transactionsHandler.validateAndPutTransaction(transactionTwo)(sem)
+          acctStateThree   <- transactionsHandler.validateAndPutTransaction(transactionTwo)
           tsThree          <- currTs
           _                <- logger.info(s"Using ${tsThree} for third transaction")
           transactionThree <- IO.pure(Transaction("Apple", 500, 1581256235, tsThree))
-          acctStateFour    <- transactionsHandler.validateAndPutTransaction(transactionThree)(sem)
+          acctStateFour    <- transactionsHandler.validateAndPutTransaction(transactionThree)
           tsFour           <- currTs
           _                <- logger.info(s"Using ${tsFour} for fourth transaction")
           transactionFour  <- IO.pure(Transaction("Apple", 10, 1581256236, tsFour))
-          acctStateFive    <- transactionsHandler.validateAndPutTransaction(transactionFour)(sem)
+          acctStateFive    <- transactionsHandler.validateAndPutTransaction(transactionFour)
           entryOne         <- window._1.getTransactionEntry("Nike", 250)
           entryTwo         <- window._1.getTransactionEntry("Adidas", 250)
           entryThree       <- window._1.getTransactionEntry("Apple", 500)
@@ -258,12 +259,12 @@ class TransactionsProcessorSpec extends AnyFunSpec {
           tsOne          <- currTs
           _              <- logger.info(s"Using ${tsOne} for first transaction")
           transactionOne <- IO.pure(Transaction("Apple", 1000, 1581256243, tsOne))
-          acctStateOne   <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)(sem)
-          acctStateTwo   <- transactionsHandler.validateAndPutTransaction(transactionOne)(sem)
+          acctStateOne   <- accountsHandler.validateAndPutAccount(beforeTransactionAccount)
+          acctStateTwo   <- transactionsHandler.validateAndPutTransaction(transactionOne)
           tsTwo          <- currTs
           _              <- logger.info(s"Using ${tsTwo} for second transaction")
           transactionTwo <- IO.pure(Transaction("Apple", 1000, 1581256244, tsTwo))
-          acctStateThree <- transactionsHandler.validateAndPutTransaction(transactionTwo)(sem)
+          acctStateThree <- transactionsHandler.validateAndPutTransaction(transactionTwo)
 
           entryOne <- window._1.getTransactionEntry("Apple", 1000)
 

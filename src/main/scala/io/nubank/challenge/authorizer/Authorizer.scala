@@ -1,5 +1,6 @@
 package io.nubank.challenge.authorizer
 
+import cats.effect.concurrent.{Deferred, Semaphore}
 import cats.effect.{ExitCode, IO, IOApp}
 import fs2.Stream
 import fs2.concurrent.{SignallingRef, Topic}
@@ -31,21 +32,27 @@ object Authorizer extends IOApp {
       props       <- Stream.eval(streamProps)
       interrupter <- Stream.eval(SignallingRef[IO, Boolean](false))
       topic       <- Stream.eval(Topic[IO, Either[DecodingFailure, ExternalEvent]](Right(Start)))
+      semaphore   <- Stream.eval(Semaphore[IO](1))
       store       <- Stream.resource(AccountStoreService.create())
-      window      <- Stream.resource(acquireWindow(props.getProperty("TIME_WINDOW_SIZE_SECONDS").toInt.seconds))
-      authService = new EventsProcessor(store, window._1, topic)
-      _ <- authService
-        .eventsHandler()
-        .concurrently(authService.consumeEvents())
+      window <- Stream.resource(
+        acquireWindow(
+          props.getProperty("TIME_WINDOW_SIZE_SECONDS").toInt.seconds,
+          props.getProperty("TRANSACTION_FREQUENCY_TOLERANCE").toInt,
+          props.getProperty("TRANSACTION_DOUBLED_TOLERANCE").toInt
+        )
+      )
+      authService = new EventsProcessor(store, window._1, topic, semaphore)
+      _ <- authService.eventsHandler
+        .concurrently(authService.consumeEvents)
         .interruptWhen(interrupter)
     } yield ()
 
     outer
       .handleErrorWith {
-        case unrecognized: UnrecognizedEventException => Stream.eval(logger.error(unrecognized.msg))
-        case parsing: ParsingFailureException         => Stream.eval(logger.error(parsing.msg))
-        case decoding: DecodingFailureException       => Stream.eval(logger.error(decoding.msg))
-        case throwable: Throwable                     => Stream.eval(logger.error(s"Unknown exception occurred:  ${throwable.getMessage}"))
+        case unrecognized: UnrecognizedEventException => Stream.eval(logger.warn(unrecognized.msg))
+        case parsing: ParsingFailureException         => Stream.eval(logger.warn(parsing.msg))
+        case decoding: DecodingFailureException       => Stream.eval(logger.warn(decoding.msg))
+        case throwable: Throwable                     => Stream.eval(logger.warn(s"Unknown exception occurred:  ${throwable.getMessage}"))
       }
       .compile
       .drain

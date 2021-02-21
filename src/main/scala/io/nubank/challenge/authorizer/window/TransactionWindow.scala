@@ -5,7 +5,6 @@ import io.nubank.challenge.authorizer.external.ExternalDomain.Transaction
 import monix.execution.schedulers.SchedulerService
 import monix.execution.{Cancelable, Scheduler}
 import org.typelevel.log4cats.Logger
-
 import java.util.concurrent.ConcurrentHashMap
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
@@ -21,8 +20,15 @@ import scala.jdk.CollectionConverters.CollectionHasAsScala
   *  What that means is that a Transaction with event time: "2019-02-13T10:00:00.000Z" and another with event time:
   * "2019-02-13T11:00:00.000Z" although have one hour between their event times; will belong to the same window of size
   *  2 minutes, if they arrive/are-seen by the streaming system without their natural delay.
+  *
+  *  frequencyTolerance is the number of transactions per windowSize that are tolerated by the TransactionWindow
+  *
+  *  doubledTolerance is the number of transaction for merchant, amount per windowSize that are tolerated by the
+  *  TransactionWindow
   * */
-class TransactionWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO]) {
+class TransactionWindow(windowSize: FiniteDuration, frequencyTolerance: Int, doubledTolerance: Int)(
+    implicit logger: Logger[IO]
+) {
   /* windowMap models the underlying window as HashMap where:
    *  K -> Combination of Transaction merchant and amount.
    *  This can be replaced by any Transaction => String to optimize for common lookup operations which require
@@ -34,6 +40,9 @@ class TransactionWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO])
    * */
   private val windowMap          = new ConcurrentHashMap[String, mutable.ListBuffer[(Long, Long)]]()
   lazy val widowSizeMs: IO[Long] = IO.pure(windowSize.toMillis)
+
+  lazy val frequentTransactionTolerance: IO[Int] = IO.pure(frequencyTolerance)
+  lazy val doubledTransactionTolerance: IO[Int]  = IO.pure(doubledTolerance)
 
   /**
     * Clears the Transaction Window in IO
@@ -90,14 +99,16 @@ class TransactionWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO])
     new Runnable {
       override def run(): Unit = {
         try {
-          logger.info(s"Running cache eviction")
+          logger
+            .debug(s"Running cache eviction")
+            .unsafeRunSync() /* Not the best practice. ToDo: Refactor logging in eviction */
           for (entries <- windowMap.entrySet().asScala) {
             val entryKey: String                   = entries.getKey
             val entryVal: ListBuffer[(Long, Long)] = entries.getValue
             val curr: Long                         = System.currentTimeMillis()
 
             if (curr - entryVal.reverse.head._2 >= windowSize.toMillis) {
-              logger.info(s"Removing expired cache key ${entryKey}")
+              logger.debug(s"Removing expired cache key ${entryKey}").unsafeRunSync()
               windowMap.remove(entryKey)
             } else {
               entryVal.filterInPlace(item => (curr - item._2) <= windowSize.toMillis)
@@ -116,11 +127,13 @@ class TransactionWindow(windowSize: FiniteDuration)(implicit logger: Logger[IO])
 object TransactionWindow {
   implicit val cpuScheduler: SchedulerService = Scheduler.computation(1, name = "cpu-bound-eviction-thread")
   def acquireWindow(
-      windowSize: FiniteDuration
+      windowSize: FiniteDuration,
+      frequentTransactionTolerance: Int = 3,
+      doubledTransactionTolerance: Int = 1
   )(implicit logger: Logger[IO]): Resource[IO, (TransactionWindow, Cancelable)] =
     Resource.make {
       for {
-        window   <- IO.delay(new TransactionWindow(windowSize))
+        window   <- IO.delay(new TransactionWindow(windowSize, frequentTransactionTolerance, doubledTransactionTolerance))
         runnable <- window.evictionFunction
         evict <- IO.delay(
           cpuScheduler.scheduleWithFixedDelay(
@@ -134,9 +147,9 @@ object TransactionWindow {
 
     } { res =>
       for {
-        _ <- logger.info("Shutting down eviction thread")
+        //_ <- logger.info("Shutting down eviction thread")
         _ <- IO.delay(res._2.cancel())
-        _ <- logger.info("Clearing ConcurrentWindow")
+        //_ <- logger.info("Clearing ConcurrentWindow")
         _ <- res._1.clearWindow()
       } yield ()
     }

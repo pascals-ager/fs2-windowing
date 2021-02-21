@@ -1,6 +1,6 @@
 package io.nubank.challenge.authorizer.events
 
-import cats.effect.concurrent.Semaphore
+import cats.effect.concurrent.{Deferred, Semaphore}
 import cats.effect.{Blocker, ContextShift, IO, Timer}
 import fs2.{Pipe, Stream}
 import fs2.concurrent.Topic
@@ -23,20 +23,23 @@ import io.nubank.challenge.authorizer.stores.AccountStoreService
 import io.nubank.challenge.authorizer.window.TransactionWindow
 import org.typelevel.log4cats.Logger
 
+import scala.util.Random
+
 class EventsProcessor(
     store: AccountStoreService,
     window: TransactionWindow,
-    topic: Topic[IO, Either[DecodingFailure, ExternalEvent]]
+    topic: Topic[IO, Either[DecodingFailure, ExternalEvent]],
+    semaphore: Semaphore[IO]
 )(
     implicit timer: Timer[IO],
     threadpool: ContextShift[IO],
     logger: Logger[IO]
 ) {
 
-  implicit val semaphore: Stream[IO, Semaphore[IO]] = Stream.eval(Semaphore[IO](1))
-  val accountsHandler                               = new AccountsProcessor(store)
-  val transactionsHandler                           = new TransactionsProcessor(store, window)
-  def consumeEvents(): Stream[IO, Unit] =
+  //implicit val semaphore: Stream[IO, Semaphore[IO]] = Stream.eval(Semaphore[IO](1))
+  val accountsHandler     = new AccountsProcessor(store)
+  val transactionsHandler = new TransactionsProcessor(store, window)
+  def consumeEvents: Stream[IO, Unit] =
     Stream
       .resource(Blocker[IO])
       .flatMap { blocker =>
@@ -80,31 +83,40 @@ class EventsProcessor(
       } yield pub
     }
 
-  def authorizeEvents: Pipe[IO, Either[DecodingFailure, ExternalEvent], Option[AccountState]] = _.flatMap {
-    case Left(ex) => Stream.raiseError[IO](DecodingFailureException(ex.message))
-    case Right(value) =>
-      value match {
-        case AccountEvent(account) =>
-          for {
-            sem <- semaphore
-            acctState <- Stream
-              .eval(accountsHandler.validateAndPutAccount(account)(sem))
-          } yield Some(acctState)
+  def authorizeEvents(
+      semaphore: Semaphore[IO]
+  ): Pipe[IO, Either[DecodingFailure, ExternalEvent], Option[AccountState]] =
+    _.flatMap {
+      case Left(ex) => Stream.raiseError[IO](DecodingFailureException(ex.message))
+      case Right(value) =>
+        value match {
+          case AccountEvent(account) =>
+            for {
+              _ <- Stream.eval(semaphore.acquire)
+              _ <- Stream.eval(logger.debug(s"Acquired semaphore for AccountEvent ${account}"))
+              acctState <- Stream
+                .eval(accountsHandler.validateAndPutAccount(account))
+              _ <- Stream.eval(logger.debug(s"Releasing semaphore for AccountEvent ${account}"))
+              _ <- Stream.eval(semaphore.release)
+            } yield Some(acctState)
 
-        case TransactionEvent(transaction) =>
-          for {
-            sem <- semaphore
-            acctState <- Stream
-              .eval(transactionsHandler.validateAndPutTransaction(transaction)(sem))
-          } yield Some(acctState)
+          case TransactionEvent(transaction) =>
+            for {
+              _ <- Stream.eval(logger.debug(s"Acquired semaphore for TransactionEvent ${transaction}"))
+              _ <- Stream.eval(semaphore.acquire)
+              acctState <- Stream
+                .eval(transactionsHandler.validateAndPutTransaction(transaction))
+              _ <- Stream.eval(logger.debug(s"Releasing semaphore for TransactionEvent ${transaction}"))
+              _ <- Stream.eval(semaphore.release)
+            } yield Some(acctState)
 
-        case Start => Stream.emit(None)
-      }
-  }
+          case Start => Stream.emit(None)
+        }
+    }
 
   def publishState: Pipe[IO, Option[AccountState], Unit] = _.flatMap { in =>
     val publish: Stream[IO, Unit] = for {
-      _ <- Stream.eval(logger.info("Publishing AccountState to stdout."))
+      _ <- Stream.eval(logger.debug("Publishing AccountState to stdout."))
       pub <- in match {
         case Some(acctState) => Stream.eval(IO.delay(println(acctState.asJson)))
         case None            => Stream.emit(())
@@ -117,10 +129,9 @@ class EventsProcessor(
     topic.subscribe(10)
   }
 
-  def eventsHandler(): Stream[IO, Unit] = {
+  def eventsHandler: Stream[IO, Unit] = {
     eventsSubscriber
-      .through(authorizeEvents)
+      .through(authorizeEvents(semaphore))
       .through(publishState)
   }
-
 }

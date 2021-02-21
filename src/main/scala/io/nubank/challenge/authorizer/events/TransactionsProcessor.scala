@@ -12,8 +12,11 @@ import io.nubank.challenge.authorizer.validations.ValidationService.{
   validatedTransactionFrequency
 }
 import io.nubank.challenge.authorizer.window.TransactionWindow
+import org.typelevel.log4cats.Logger
 
-class TransactionsProcessor(store: AccountStoreService, window: TransactionWindow) {
+import scala.util.Random
+
+class TransactionsProcessor(store: AccountStoreService, window: TransactionWindow)(implicit logger: Logger[IO]) {
 
   /**
     * Validate an TransactionEvent and apply it the AccountStore as well TransactionWindow
@@ -22,9 +25,8 @@ class TransactionsProcessor(store: AccountStoreService, window: TransactionWindo
     */
   def validateAndPutTransaction(
       transaction: Transaction
-  )(implicit semaphore: Semaphore[IO]): IO[AccountState] =
+  ): IO[AccountState] =
     for {
-      acq                      <- semaphore.acquire
       transactionAccountState  <- store.getAccount()
       acctActiveValidation     <- validatedAccountActive(transaction, transactionAccountState)
       acctBalanceValidation    <- validatedAccountBalance(transaction, transactionAccountState)
@@ -35,6 +37,7 @@ class TransactionsProcessor(store: AccountStoreService, window: TransactionWindo
       )
       allValid  <- IO.delay(validations.forall(item => item.isValid))
       allErrors <- IO.delay(validations.flatMap(va => va.fold(l => l.toChain.toList, r => List[DomainValidation]())))
+
       acctState <- if (allValid) {
         for {
           /* transactionAccountState.get is safe because acctActiveValidation && acctBalanceValidation have checked against None */
@@ -45,11 +48,16 @@ class TransactionsProcessor(store: AccountStoreService, window: TransactionWindo
               transactionAccountState.get.`available-limit` - transaction.amount
             )
           )
+          _         <- logger.debug(s"Transaction: ${transaction} to applied to ${transactionAccountState}")
+          _         <- logger.debug(s"New state after Transaction: ${newAccState}")
           acctState <- IO.delay(AccountState(newAccState, allErrors.toList))
         } yield acctState
       } else {
-        IO.delay(AccountState(transactionAccountState, allErrors.toList))
+        for {
+          _         <- logger.debug(s"Transaction: ${transaction} to applied to ${transactionAccountState}")
+          _         <- logger.debug(s"New state after Transaction: ${transactionAccountState}")
+          acctState <- IO.delay(AccountState(transactionAccountState, allErrors.toList))
+        } yield acctState
       }
-      rel <- semaphore.release
     } yield acctState
 }

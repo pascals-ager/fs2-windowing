@@ -49,5 +49,7 @@ daemonUser in Docker    := "authorizerNubank"
 * */
 dockerEnvVars := Map(
   "TIME_WINDOW_SIZE_SECONDS" -> "120",
-  "TOPIC_QUEUE_SIZE" -> "10"
+  "TOPIC_QUEUE_SIZE" -> "10",
+  "TRANSACTION_FREQUENCY_TOLERANCE" -> "3",
+  "TRANSACTION_DOUBLED_TOLERANCE" -> "1"
 )

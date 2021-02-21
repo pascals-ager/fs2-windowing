@@ -54,7 +54,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(validation.isValid)
   }
 
-  it("Should allow inactive accounts that can be activated") {
+  it("Should allow inactive accounts to be activated") {
     val firstAccountEvent  = Account(false, 100)
     val secondAccountEvent = Account(true, 100)
     val test: IO[ValidatedNec[DomainValidation, Account]] = AccountStoreService.create().use { store =>
@@ -67,7 +67,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(validation.isValid)
   }
 
-  it("Should allow active accounts that can be inactivated") {
+  it("Should allow active accounts to be inactivated") {
     val firstAccountEvent  = Account(true, 100)
     val secondAccountEvent = Account(false, 100)
     val test: IO[ValidatedNec[DomainValidation, Account]] = AccountStoreService.create().use { store =>
@@ -80,7 +80,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     assert(validation.isValid)
   }
 
-  it("Should not allow balance changes during account activation") {
+  /*  it("Should not allow balance changes during account activation") {
     val firstAccountEvent  = Account(true, 100)
     val secondAccountEvent = Account(false, 50)
     val test: IO[ValidatedNec[DomainValidation, Account]] = AccountStoreService.create().use { store =>
@@ -92,7 +92,7 @@ class ValidationServiceSpec extends AnyFunSpec {
     val validation = test.unsafeRunSync()
     assert(validation.isInvalid)
     assert(validation.fold(l => l.toChain.toList, r => List[DomainValidation]()) == List(`account-already-initialized`))
-  }
+  }*/
 
   it("Should emit account-not-initialized on Transaction") {
     val firstTransaction = Transaction("Nike", 250, 1581256223, System.currentTimeMillis())

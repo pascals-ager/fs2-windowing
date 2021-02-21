@@ -1,7 +1,7 @@
 package io.nubank.challenge.authorizer.events
 
-import cats.effect.{ContextShift, IO, Resource, Timer}
-import cats.effect.implicits._
+import cats.effect.concurrent.{Deferred, Semaphore}
+import cats.effect.{ContextShift, IO, Timer}
 import fs2.{Pure, Stream}
 import fs2.concurrent.Topic
 import io.circe.DecodingFailure
@@ -27,8 +27,6 @@ import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import scala.concurrent.ExecutionContext.global
 import scala.concurrent.duration.DurationInt
-import scala.concurrent.{Await, Future}
-import scala.util.Try
 
 class EventsProcessorSpec extends AnyFunSpec {
   private implicit val cs: ContextShift[IO]          = IO.contextShift(global)
@@ -50,8 +48,9 @@ class EventsProcessorSpec extends AnyFunSpec {
     val producerStream: Stream[IO, Either[DecodingFailure, ExternalEvent]] = storeRes.flatMap { store =>
       windowRes.flatMap { window =>
         for {
-          topic <- topicStream
-          eventsService = new EventsProcessor(store, window._1, topic)
+          semaphore <- Stream.eval(Semaphore[IO](1))
+          topic     <- topicStream
+          eventsService = new EventsProcessor(store, window._1, topic, semaphore)
           testStream <- inputStream.through(eventsService.eventsClassificationPipe)
         } yield testStream
       }
@@ -71,8 +70,9 @@ class EventsProcessorSpec extends AnyFunSpec {
     val producerStream: Stream[IO, Either[DecodingFailure, ExternalEvent]] = storeRes.flatMap { store =>
       windowRes.flatMap { window =>
         for {
-          topic <- topicStream
-          eventsService = new EventsProcessor(store, window._1, topic)
+          semaphore <- Stream.eval(Semaphore[IO](1))
+          topic     <- topicStream
+          eventsService = new EventsProcessor(store, window._1, topic, semaphore)
           testStream <- inputStream.through(eventsService.eventsClassificationPipe)
         } yield testStream
       }
@@ -112,8 +112,9 @@ class EventsProcessorSpec extends AnyFunSpec {
     val publishStream: Stream[IO, Either[DecodingFailure, ExternalEvent]] = storeRes.flatMap { store =>
       windowRes.flatMap { window =>
         for {
-          topic <- topicStream
-          eventsService = new EventsProcessor(store, window._1, topic)
+          semaphore <- Stream.eval(Semaphore[IO](1))
+          topic     <- topicStream
+          eventsService = new EventsProcessor(store, window._1, topic, semaphore)
           testStream <- inputStream.through(eventsService.eventsPublishPipe)
           events     <- eventsService.eventsSubscriber
         } yield events
@@ -133,11 +134,12 @@ class EventsProcessorSpec extends AnyFunSpec {
     val publishStream: Stream[IO, Option[ExternalDomain.AccountState]] = storeRes.flatMap { store =>
       windowRes.flatMap { window =>
         for {
+          semaphore <- Stream.eval(Semaphore[IO](1))
           //_     <- Stream.eval(store.putAccount(Account(true, 100)))
           topic <- topicStream
-          eventsService = new EventsProcessor(store, window._1, topic)
+          eventsService = new EventsProcessor(store, window._1, topic, semaphore)
           testStream <- inputStream.through(eventsService.eventsPublishPipe)
-          events     <- eventsService.eventsSubscriber.through(eventsService.authorizeEvents)
+          events     <- eventsService.eventsSubscriber.through(eventsService.authorizeEvents(semaphore))
         } yield events
       }
     }
@@ -155,11 +157,12 @@ class EventsProcessorSpec extends AnyFunSpec {
     val publishStream: Stream[IO, Option[ExternalDomain.AccountState]] = storeRes.flatMap { store =>
       windowRes.flatMap { window =>
         for {
-          _     <- Stream.eval(store.putAccount(Account(true, 100)))
-          topic <- topicStream
-          eventsService = new EventsProcessor(store, window._1, topic)
+          semaphore <- Stream.eval(Semaphore[IO](1))
+          _         <- Stream.eval(store.putAccount(Account(true, 100)))
+          topic     <- topicStream
+          eventsService = new EventsProcessor(store, window._1, topic, semaphore)
           testStream <- inputStream.through(eventsService.eventsPublishPipe)
-          events     <- eventsService.eventsSubscriber.through(eventsService.authorizeEvents)
+          events     <- eventsService.eventsSubscriber.through(eventsService.authorizeEvents(semaphore))
         } yield events
       }
     }
@@ -168,5 +171,4 @@ class EventsProcessorSpec extends AnyFunSpec {
 
     assert(event.head.get == AccountState(Some(Account(true, 40)), List()))
   }
-
 }
