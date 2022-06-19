@@ -1,8 +1,8 @@
-package io.nubank.challenge.authorizer.stores
+package io.win.stream.authorizer.stores
 
 import cats.effect.concurrent.Ref
 import cats.effect.{IO, Resource}
-import io.nubank.challenge.authorizer.external.ExternalDomain.Account
+import io.win.stream.authorizer.external.ExternalDomain.Account
 import org.typelevel.log4cats.Logger
 
 trait AccountStoreService {

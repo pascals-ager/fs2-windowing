@@ -1,17 +1,17 @@
-package io.nubank.challenge.authorizer.events
+package io.win.stream.authorizer.events
 
 import cats.effect.concurrent.Semaphore
 import cats.effect.{ContextShift, IO, Timer}
-import io.nubank.challenge.authorizer.external.ExternalDomain
-import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, Transaction}
-import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.validations.{
+import io.win.stream.authorizer.external.ExternalDomain
+import io.win.stream.authorizer.external.ExternalDomain.{Account, Transaction}
+import io.win.stream.authorizer.stores.AccountStoreService
+import io.win.stream.authorizer.validations.{
   `card-not-active`,
   `doubled-transaction`,
   `high-frequency-small-interval`,
   `insufficient-limit`
 }
-import io.nubank.challenge.authorizer.window.TransactionWindow.acquireWindow
+import io.win.stream.authorizer.window.TransactionWindow.acquireWindow
 import org.scalatest.funspec.AnyFunSpec
 import org.typelevel.log4cats.SelfAwareStructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger

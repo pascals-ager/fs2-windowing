@@ -1,4 +1,4 @@
-package io.nubank.challenge.authorizer.exception
+package io.win.stream.authorizer.exception
 
 object DomainException {
   case class UnrecognizedEventException(msg: String) extends Exception

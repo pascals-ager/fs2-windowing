@@ -1,20 +1,20 @@
-package io.nubank.challenge.authorizer
+package io.win.stream.authorizer
 
 import cats.effect.concurrent.{Deferred, Semaphore}
 import cats.effect.{ExitCode, IO, IOApp}
 import fs2.Stream
 import fs2.concurrent.{SignallingRef, Topic}
 import io.circe._
-import io.nubank.challenge.authorizer.configs.createStreamsProps
-import io.nubank.challenge.authorizer.events.EventsProcessor
-import io.nubank.challenge.authorizer.exception.DomainException.{
+import io.win.stream.authorizer.configs.createStreamsProps
+import io.win.stream.authorizer.events.EventsProcessor
+import io.win.stream.authorizer.exception.DomainException.{
   DecodingFailureException,
   ParsingFailureException,
   UnrecognizedEventException
 }
-import io.nubank.challenge.authorizer.external.ExternalDomain.{ExternalEvent, Start}
-import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.window.TransactionWindow.acquireWindow
+import io.win.stream.authorizer.external.ExternalDomain.{ExternalEvent, Start}
+import io.win.stream.authorizer.stores.AccountStoreService
+import io.win.stream.authorizer.window.TransactionWindow.acquireWindow
 import org.typelevel.log4cats.SelfAwareStructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger
 

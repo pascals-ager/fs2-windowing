@@ -1,17 +1,17 @@
-package io.nubank.challenge.authorizer.events
+package io.win.stream.authorizer.events
 
 import cats.effect.IO
 import cats.effect.concurrent.Semaphore
-import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, AccountState, Transaction}
-import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.validations.DomainValidation
-import io.nubank.challenge.authorizer.validations.ValidationService.{
+import io.win.stream.authorizer.external.ExternalDomain.{Account, AccountState, Transaction}
+import io.win.stream.authorizer.stores.AccountStoreService
+import io.win.stream.authorizer.validations.DomainValidation
+import io.win.stream.authorizer.validations.ValidationService.{
   validatedAccountActive,
   validatedAccountBalance,
   validatedDoubledTransaction,
   validatedTransactionFrequency
 }
-import io.nubank.challenge.authorizer.window.TransactionWindow
+import io.win.stream.authorizer.window.TransactionWindow
 import org.typelevel.log4cats.Logger
 
 import scala.util.Random

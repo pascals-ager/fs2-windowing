@@ -1,4 +1,4 @@
-package io.nubank.challenge.authorizer.validations
+package io.win.stream.authorizer.validations
 
 import io.circe.generic.extras.semiauto.deriveEnumerationCodec
 import io.circe.Codec

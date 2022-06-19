@@ -1,7 +1,7 @@
-package io.nubank.challenge.authorizer.window
+package io.win.stream.authorizer.window
 
 import cats.effect.{IO, Resource}
-import io.nubank.challenge.authorizer.external.ExternalDomain.Transaction
+import io.win.stream.authorizer.external.ExternalDomain.Transaction
 import monix.execution.schedulers.SchedulerService
 import monix.execution.{Cancelable, Scheduler}
 import org.typelevel.log4cats.Logger

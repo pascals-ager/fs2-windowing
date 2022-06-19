@@ -1,14 +1,14 @@
-package io.nubank.challenge.authorizer.events
+package io.win.stream.authorizer.events
 
 import cats.effect.concurrent.Semaphore
 import cats.effect.{ContextShift, IO, Timer}
 import fs2.Stream
-import io.nubank.challenge.authorizer.external.ExternalDomain
-import io.nubank.challenge.authorizer.external.ExternalDomain.Account
-import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.validations.{`account-already-initialized`, `account-not-initialized`}
-import io.nubank.challenge.authorizer.window.TransactionWindow
-import io.nubank.challenge.authorizer.window.TransactionWindow.acquireWindow
+import io.win.stream.authorizer.external.ExternalDomain
+import io.win.stream.authorizer.external.ExternalDomain.Account
+import io.win.stream.authorizer.stores.AccountStoreService
+import io.win.stream.authorizer.validations.{`account-already-initialized`, `account-not-initialized`}
+import io.win.stream.authorizer.window.TransactionWindow
+import io.win.stream.authorizer.window.TransactionWindow.acquireWindow
 import monix.execution.Cancelable
 import org.scalatest.funspec.AnyFunSpec
 import org.typelevel.log4cats.SelfAwareStructuredLogger

@@ -1,10 +1,10 @@
-package io.nubank.challenge.authorizer.events
+package io.win.stream.authorizer.events
 
 import cats.effect.IO
 import cats.effect.concurrent.Semaphore
-import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, AccountState}
-import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.validations.ValidationService.validateAccount
+import io.win.stream.authorizer.external.ExternalDomain.{Account, AccountState}
+import io.win.stream.authorizer.stores.AccountStoreService
+import io.win.stream.authorizer.validations.ValidationService.validateAccount
 import org.typelevel.log4cats.Logger
 
 class AccountsProcessor(store: AccountStoreService)(implicit logger: Logger[IO]) {

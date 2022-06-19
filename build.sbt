@@ -1,10 +1,10 @@
 import Dependencies._
 
 lazy val commonSettings = Seq(
-  name := "authorizerNubank",
+  name := "authorizerfs2",
   scalaVersion := "2.13.4",
   version := "0.1",
-  organization := "io.nubank.challenge",
+  organization := "io.win.stream",
   scalacOptions ++= Seq(
     // warnings
     "-unchecked", // able additional warnings where generated code depends on assumptions
@@ -28,12 +28,12 @@ resolvers ++= Seq(
 )
 
 
-lazy val authorizerNubank = (project in file(".")).
+lazy val authorizerfs2 = (project in file(".")).
   enablePlugins(JavaServerAppPackaging,
     AshScriptPlugin,
     DockerPlugin).
-  settings(moduleName := "authorizerNubank").
-  settings(mainClass in Compile := Some("io.nubank.challenge.authorizer.Authorizer")).
+  settings(moduleName := "authorizerfs2").
+  settings(mainClass in Compile := Some("io.win.stream.authorizer.Authorizer")).
   settings(commonSettings: _*).
   settings(
     libraryDependencies ++= fs2 ++ circe ++ scalatest ++ log4cats ++ monix ++ typedconfig
@@ -43,7 +43,7 @@ scalafmtOnCompile := true
 
 /* Default the image is built on openjdk11 */
 dockerBaseImage := "adoptopenjdk/openjdk11"
-daemonUser in Docker    := "authorizerNubank"
+daemonUser in Docker    := "authorizerfs2"
 /*
 * Customize this for default window size
 * */

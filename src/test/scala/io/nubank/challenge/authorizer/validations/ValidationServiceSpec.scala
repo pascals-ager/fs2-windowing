@@ -1,12 +1,12 @@
-package io.nubank.challenge.authorizer.validations
+package io.win.stream.authorizer.validations
 
 import cats.data.ValidatedNec
 import cats.effect.IO
-import io.nubank.challenge.authorizer.events.AccountsProcessor
-import io.nubank.challenge.authorizer.external.ExternalDomain
-import io.nubank.challenge.authorizer.external.ExternalDomain.{Account, Transaction}
-import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.window.TransactionWindow.acquireWindow
+import io.win.stream.authorizer.events.AccountsProcessor
+import io.win.stream.authorizer.external.ExternalDomain
+import io.win.stream.authorizer.external.ExternalDomain.{Account, Transaction}
+import io.win.stream.authorizer.stores.AccountStoreService
+import io.win.stream.authorizer.window.TransactionWindow.acquireWindow
 import org.scalatest.funspec.AnyFunSpec
 import org.typelevel.log4cats.SelfAwareStructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger

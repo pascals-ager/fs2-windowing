@@ -1,4 +1,4 @@
-package io.nubank.challenge.authorizer
+package io.win.stream.authorizer
 
 import java.util.Properties
 

@@ -35,9 +35,9 @@
  time based. Ticking time does not tick it on the window eviction fiber, and the TestScheduler does not provide an interface for fixed delay schedules.  
  ```  
 2. Build: This repo use a native-packager to package this application into a Docker Image. To build the docker image:    
-   `sbt docker:publishLocal` publishes `authorizernubank:0.1`
+   `sbt docker:publishLocal` publishes `authorizerfs2:0.1`
 
-3. To run locally: `cat operations |  docker run -i  authorizernubank:0.1 /bin/bash -c 'cat'`
+3. To run locally: `cat operations |  docker run -i  authorizerfs2:0.1 /bin/bash -c 'cat'`
 ```  
 {  
   "account" : {  

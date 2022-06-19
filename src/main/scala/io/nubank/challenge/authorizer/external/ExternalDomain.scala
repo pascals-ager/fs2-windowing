@@ -1,9 +1,9 @@
-package io.nubank.challenge.authorizer.external
+package io.win.stream.authorizer.external
 
 import io.circe.Decoder.Result
 import io.circe.{Decoder, Encoder, HCursor, Json}
 import io.circe.generic.semiauto.{deriveDecoder, deriveEncoder}
-import io.nubank.challenge.authorizer.validations.DomainValidation
+import io.win.stream.authorizer.validations.DomainValidation
 
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter

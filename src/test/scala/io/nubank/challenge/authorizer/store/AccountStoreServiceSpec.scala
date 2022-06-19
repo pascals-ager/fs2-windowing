@@ -1,9 +1,9 @@
-package io.nubank.challenge.authorizer.store
+package io.win.stream.authorizer.store
 
 import cats.effect.IO
-import io.nubank.challenge.authorizer.external.ExternalDomain
-import io.nubank.challenge.authorizer.external.ExternalDomain.Account
-import io.nubank.challenge.authorizer.stores.AccountStoreService
+import io.win.stream.authorizer.external.ExternalDomain
+import io.win.stream.authorizer.external.ExternalDomain.Account
+import io.win.stream.authorizer.stores.AccountStoreService
 import org.scalatest.funspec.AnyFunSpec
 import org.typelevel.log4cats.SelfAwareStructuredLogger
 import org.typelevel.log4cats.slf4j.Slf4jLogger

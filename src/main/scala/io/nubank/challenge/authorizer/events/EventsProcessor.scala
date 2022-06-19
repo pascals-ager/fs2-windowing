@@ -1,4 +1,4 @@
-package io.nubank.challenge.authorizer.events
+package io.win.stream.authorizer.events
 
 import cats.effect.concurrent.{Deferred, Semaphore}
 import cats.effect.{Blocker, ContextShift, IO, Timer}
@@ -7,20 +7,20 @@ import fs2.concurrent.Topic
 import io.circe.DecodingFailure
 import io.circe.parser.parse
 import io.circe.syntax.EncoderOps
-import io.nubank.challenge.authorizer.exception.DomainException.{
+import io.win.stream.authorizer.exception.DomainException.{
   DecodingFailureException,
   ParsingFailureException,
   UnrecognizedEventException
 }
-import io.nubank.challenge.authorizer.external.ExternalDomain.{
+import io.win.stream.authorizer.external.ExternalDomain.{
   AccountEvent,
   AccountState,
   ExternalEvent,
   Start,
   TransactionEvent
 }
-import io.nubank.challenge.authorizer.stores.AccountStoreService
-import io.nubank.challenge.authorizer.window.TransactionWindow
+import io.win.stream.authorizer.stores.AccountStoreService
+import io.win.stream.authorizer.window.TransactionWindow
 import org.typelevel.log4cats.Logger
 
 import scala.util.Random
