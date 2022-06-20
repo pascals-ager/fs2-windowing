@@ -79,7 +79,7 @@ dockerEnvVars := Map(
 ) 
 ```  
 
-Additionally, given more time I would have liked to
+ToDo:
 1) Write more async tests to test against invariants
 2) Find a way to deal with event transactionTime rather than processing time
 3) Generalise TransactionWindow for any `T`
